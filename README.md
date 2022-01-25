@@ -2,12 +2,18 @@
 
 This is a simple library for using the mediator pattern in your typescript and deno projects.  It is meant to be a direct port of the Mediatr library for .NET Core.
 
+## Why Jimmy?
+
+1. Former US President Jimmy Carter was known for his ability at being a great mediator.
+2. The .NET Core library [MediatR](https://github.com/jbogard/MediatR) was written by Jimmy Bogard.
+3. Coicdence?  I think not.
+
 ## Example Usage
 
 ### Deno
 
 ```ts
-import { Mediator, Request } from "https://deno.land/x/jimmy@v0.1.0/mod.ts";
+import { Mediator, Request } from "https://deno.land/x/jimmy@v0.1.0-preview3/mod.ts";
 
 const mediator = new Mediator();
 
