@@ -4,9 +4,11 @@ This is a simple library for using the mediator pattern in your typescript and d
 
 ## Example Usage
 
+### Deno
+
 ```ts
-import { Mediator } from "./mediator";
-import { Request } from "./request";
+import { Mediator } from "./mediator.ts";
+import { Request } from "./request.ts";
 
 const mediator = new Mediator();
 

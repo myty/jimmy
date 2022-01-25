@@ -1,6 +1,5 @@
 import {
   assertEquals,
-  assertNotEquals,
   assertRejects,
   assertThrows,
 } from "https://deno.land/std@0.122.0/testing/asserts.ts";
@@ -11,12 +10,10 @@ import { Request } from "./request.ts";
 Deno.test("Mediator", async (t) => {
   // Setup
   class TestClass1 extends Request<Promise<number>> {}
-  class TestClass2 extends Request<Promise<number>> {}
   class TestClass3 extends Request {}
   class UnregisteredRequest extends Request<number> {}
   class UnregisteredPromiseRequest extends Request<Promise<number>> {}
   class TestNotification1 extends Notification {}
-  class TestNotification2 extends Notification {}
   class UnregisteredNotification extends Notification {}
   const mediator = new Mediator();
   const expected = 42;
