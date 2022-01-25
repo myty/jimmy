@@ -7,8 +7,7 @@ This is a simple library for using the mediator pattern in your typescript and d
 ### Deno
 
 ```ts
-import { Mediator } from "./mediator.ts";
-import { Request } from "./request.ts";
+import { Mediator, Request } from "https://deno.land/x/jimmy@v0.1.0/mod.ts";
 
 const mediator = new Mediator();
 
