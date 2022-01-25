@@ -1,6 +1,6 @@
 # Jimmy
 
-This is a simple library for using the mediator pattern in your typescript and deno projects.  It is meant to be a direct port of the Mediatr library for .NET Core.
+This is a simple library for using the mediator pattern in your typescript and deno projects. While not entirely a true port, the MediatR library for .NET is a direct influence.
 
 ## Why Jimmy?
 
