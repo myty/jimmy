@@ -1,7 +1,10 @@
 import { Notification } from "./notification.ts";
+import { PublishStrategy } from "./publish-strategy.ts";
 import { Request } from "./request.ts";
 import {
   AnyType,
+  Constructor,
+  Handler,
   NotificationConstructor,
   NotificationHandler,
   RequestConstructor,
@@ -9,91 +12,143 @@ import {
   Response,
 } from "./types.ts";
 
+interface MediatorConfig {
+  publishStratey?: PublishStrategy;
+}
+
 export class Mediator {
   #notificationHandlers: Record<
     symbol,
     Array<NotificationHandler<Notification>>
   > = {};
-  #requestHandlers: Record<symbol, RequestHandler<Request<AnyType>>> = {};
+  #requestHandlers: Record<symbol, RequestHandler> = {};
+  #publishStrategy: PublishStrategy;
 
-  handle<TRequest extends Request<TResponse>, TResponse>(
-    { name, requestTypeId }: RequestConstructor<TRequest>,
-    handler: RequestHandler<TRequest>,
+  constructor(config?: MediatorConfig) {
+    this.#publishStrategy = config?.publishStratey ?? PublishStrategy.Async;
+  }
+
+  public handle<TRequest extends (Request<AnyType> | Notification)>(
+    constructor: Constructor<TRequest>,
+    handler: Handler<TRequest>,
   ): void {
-    if (requestTypeId in this.#requestHandlers) {
-      throw new Error(`Handler for ${name} already exists`);
+    if (
+      this.isRequestConstructor(constructor)
+    ) {
+      const { name, requestTypeId } = constructor;
+
+      if (requestTypeId in this.#requestHandlers) {
+        throw new Error(`Handler for ${name} already exists`);
+      }
+
+      this.#requestHandlers = {
+        ...this.#requestHandlers,
+        [requestTypeId]: handler,
+      };
+
+      return;
     }
 
-    this.#requestHandlers = {
-      ...this.#requestHandlers,
-      [requestTypeId]: handler as RequestHandler<Request<AnyType>>,
-    };
+    if (this.isNotificationConstructor(constructor)) {
+      const { notificationTypeId } = constructor;
+      this.#notificationHandlers = {
+        ...this.#notificationHandlers,
+        [notificationTypeId]: [
+          ...(this.#notificationHandlers[notificationTypeId] ?? []),
+          handler as NotificationHandler<Notification>,
+        ],
+      };
+      return;
+    }
+
+    throw new Error(`Invalid request or notification`);
   }
 
-  notification<TNotification extends Notification>(
-    { notificationTypeId }: NotificationConstructor<TNotification>,
-    handler: NotificationHandler<TNotification>,
-  ): void {
-    this.#notificationHandlers = {
-      ...this.#notificationHandlers,
-      [notificationTypeId]: [
-        ...(this.#notificationHandlers[notificationTypeId] ?? []),
-        handler as NotificationHandler<Notification>,
-      ],
-    };
-  }
-
-  async publish<TNotification extends Notification>(
+  public async publish<TNotification extends Notification>(
     notificaiton: TNotification,
+    publishStrategy?: PublishStrategy,
   ): Promise<void> {
     const { constructor } = notificaiton;
-    const { name, notificationTypeId } =
-      isNotificationConstructor<TNotification>(constructor)
-        ? constructor
-        : { name: undefined, notificationTypeId: undefined };
 
+    if (!this.isNotificationConstructor(constructor)) {
+      throw new Error(`No handler found for notification, ${constructor.name}`);
+    }
+
+    const handlers =
+      this.#notificationHandlers[constructor.notificationTypeId] ?? [];
+
+    const aggregateErrors: Error[] = [];
+    switch (publishStrategy ?? this.#publishStrategy) {
+      case PublishStrategy.ParallelNoWait:
+        handlers.forEach((handler) => handler(notificaiton));
+        break;
+      case PublishStrategy.ParallelWhenAny:
+        await Promise.any(handlers.map((handler) => handler(notificaiton)));
+        break;
+      case PublishStrategy.ParallelWhenAll:
+      case PublishStrategy.Async:
+        await Promise.all(handlers.map((handler) => handler(notificaiton)));
+        break;
+      case PublishStrategy.SyncContinueOnException:
+        for (const handler of handlers) {
+          try {
+            await handler(notificaiton);
+          } catch (error) {
+            aggregateErrors.push(error);
+          }
+        }
+
+        if (aggregateErrors.length > 0) {
+          throw new AggregateError(aggregateErrors);
+        }
+
+        break;
+      case PublishStrategy.SyncStopOnException:
+        for (const handler of handlers) {
+          await handler(notificaiton);
+        }
+        break;
+      default:
+        throw new Error(`Invalid publish strategy`);
+    }
+  }
+
+  public send<TRequest extends Request>(
+    requestOrNotification: TRequest,
+  ): Response<TRequest> {
     if (
-      notificationTypeId == null ||
-      !(notificationTypeId in this.#notificationHandlers)
+      requestOrNotification instanceof Request &&
+      this.isRequestConstructor(requestOrNotification.constructor)
     ) {
-      throw new Error(`No handler found for notification, ${name}`);
+      const { name, requestTypeId } = requestOrNotification.constructor;
+
+      if (!(requestTypeId in this.#requestHandlers)) {
+        throw new Error(`No handler found for request, ${name}`);
+      }
+
+      const handler = this.#requestHandlers[requestTypeId];
+
+      return handler(requestOrNotification);
     }
 
-    const handlers = this.#notificationHandlers[notificationTypeId];
-
-    await Promise.all(handlers);
+    throw new Error(`Invalid request`);
   }
 
-  send<TRequest extends Request>(request: TRequest): Response<TRequest> {
-    const { constructor } = request;
-    const { name, requestTypeId } = isRequestConstructor<TRequest>(constructor)
-      ? constructor
-      : { name: undefined, requestTypeId: undefined };
-
-    if (requestTypeId == null || !(requestTypeId in this.#requestHandlers)) {
-      throw new Error(`No handler found for request, ${name}`);
-    }
-
-    const handler = this.#requestHandlers[requestTypeId];
-
-    return handler(request);
+  private isNotificationConstructor<TNotification extends Notification>(
+    constructor: AnyType,
+  ): constructor is NotificationConstructor<TNotification> {
+    return (
+      constructor.notificationTypeId != null &&
+      typeof constructor.notificationTypeId === "symbol"
+    );
   }
-}
 
-function isNotificationConstructor<TNotification extends Notification>(
-  constructor: AnyType,
-): constructor is NotificationConstructor<TNotification> {
-  return (
-    constructor.notificationTypeId != null &&
-    typeof constructor.notificationTypeId === "symbol"
-  );
-}
-
-function isRequestConstructor<TRequest extends Request>(
-  constructor: AnyType,
-): constructor is RequestConstructor<TRequest> {
-  return (
-    constructor.requestTypeId != null &&
-    typeof constructor.requestTypeId === "symbol"
-  );
+  private isRequestConstructor<TRequest extends Request>(
+    constructor: AnyType,
+  ): constructor is RequestConstructor<TRequest> {
+    return (
+      constructor.requestTypeId != null &&
+      typeof constructor.requestTypeId === "symbol"
+    );
+  }
 }
