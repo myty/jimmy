@@ -3,6 +3,7 @@
   "version": "0.2.0",
   "description": "An simple mediator for both Deno and Node.js",
   "main": "index.bundle.js",
+  "types": "index.d.ts",
   "scripts": {
     "test": "deno test",
     "prepare": "deno bundle mod.ts index.bundle.js",
