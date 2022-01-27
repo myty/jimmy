@@ -25,7 +25,8 @@ export class Mediator {
   #publishStrategy: PublishStrategy;
 
   constructor(config?: MediatorConfig) {
-    this.#publishStrategy = config?.publishStratey ?? PublishStrategy.Async;
+    this.#publishStrategy = config?.publishStratey ??
+      PublishStrategy.SyncContinueOnException;
   }
 
   public handle<TRequest extends (Request<AnyType> | Notification)>(
