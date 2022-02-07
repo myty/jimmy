@@ -1,5 +1,8 @@
 # Jimmy
 
+![jimmy module version](https://shield.deno.dev/x/jimmy)
+[![npm version](https://badge.fury.io/js/jimmy-js.svg)](https://badge.fury.io/js/jimmy-js)
+
 This is a simple library for using the mediator pattern in your typescript and
 deno projects. While not entirely a true port, the MediatR library for .NET is a
 direct influence.
