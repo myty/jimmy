@@ -13,6 +13,10 @@
   "deno.lint": true,
   "deno.unstable": true,
   "prettier.enable": false,
+  "[jsonc]": {
+    "editor.formatOnSave": true,
+    "editor.defaultFormatter": "denoland.vscode-deno"
+  },
   "[typescript]": {
     "editor.formatOnSave": true,
     "editor.defaultFormatter": "denoland.vscode-deno"
