@@ -1,64 +1,49 @@
 import { Notification } from "./notification.ts";
 import { PublishStrategy } from "./publish-strategy.ts";
 import { Request } from "./request.ts";
+import { RequestHandlerStore } from "./request-handler-store.ts";
+import { NotificationHandlerStore } from "./notification-handler-store.ts";
 import {
   AnyType,
   Constructor,
   Handler,
-  NotificationConstructor,
   NotificationHandler,
-  RequestConstructor,
-  RequestHandler,
   Response,
 } from "./types.ts";
+import { IPublisher, PublisherFactory } from "./publisher-factory.ts";
+import { TypeGuards } from "./type-guards.ts";
 
 interface MediatorConfig {
   publishStratey?: PublishStrategy;
 }
 
 export class Mediator {
-  #notificationHandlers: Record<
-    symbol,
-    Array<NotificationHandler<Notification>>
-  > = {};
-  #requestHandlers: Record<symbol, RequestHandler> = {};
-  #publishStrategy: PublishStrategy;
+  #notificationHandlers: NotificationHandlerStore =
+    new NotificationHandlerStore();
+  #requestHandlers: RequestHandlerStore = new RequestHandlerStore();
+  #publishStrategy: IPublisher;
 
   constructor(config?: MediatorConfig) {
-    this.#publishStrategy = config?.publishStratey ??
-      PublishStrategy.SyncContinueOnException;
+    this.#publishStrategy = PublisherFactory.create(
+      config?.publishStratey ??
+        PublishStrategy.SyncContinueOnException,
+    );
   }
 
   public handle<TRequest extends (Request<AnyType> | Notification)>(
     constructor: Constructor<TRequest>,
     handler: Handler<TRequest>,
   ): void {
-    if (
-      this.isRequestConstructor(constructor)
-    ) {
-      const { name, requestTypeId } = constructor;
-
-      if (requestTypeId in this.#requestHandlers) {
-        throw new Error(`Handler for ${name} already exists`);
-      }
-
-      this.#requestHandlers = {
-        ...this.#requestHandlers,
-        [requestTypeId]: handler,
-      };
-
+    if (TypeGuards.isRequestConstructor(constructor)) {
+      this.#requestHandlers.add(constructor, handler);
       return;
     }
 
-    if (this.isNotificationConstructor(constructor)) {
-      const { notificationTypeId } = constructor;
-      this.#notificationHandlers = {
-        ...this.#notificationHandlers,
-        [notificationTypeId]: [
-          ...(this.#notificationHandlers[notificationTypeId] ?? []),
-          handler as NotificationHandler<Notification>,
-        ],
-      };
+    if (TypeGuards.isNotificationConstructor(constructor)) {
+      this.#notificationHandlers.add(
+        constructor,
+        handler as NotificationHandler,
+      );
       return;
     }
 
@@ -66,90 +51,33 @@ export class Mediator {
   }
 
   public async publish<TNotification extends Notification>(
-    notificaiton: TNotification,
+    notification: TNotification,
     publishStrategy?: PublishStrategy,
   ): Promise<void> {
-    const { constructor } = notificaiton;
+    const publisher = publishStrategy != null
+      ? PublisherFactory.create(publishStrategy)
+      : this.#publishStrategy;
 
-    if (!this.isNotificationConstructor(constructor)) {
-      throw new Error(`No handler found for notification, ${constructor.name}`);
+    if (!TypeGuards.isNotification(notification)) {
+      throw new Error(
+        `No handler found for notification, ${notification.constructor.name}`,
+      );
     }
 
-    const handlers =
-      this.#notificationHandlers[constructor.notificationTypeId] ?? [];
-
-    const aggregateErrors: Error[] = [];
-    switch (publishStrategy ?? this.#publishStrategy) {
-      case PublishStrategy.ParallelNoWait:
-        handlers.forEach((handler) => handler(notificaiton));
-        break;
-      case PublishStrategy.ParallelWhenAny:
-        await Promise.any(handlers.map((handler) => handler(notificaiton)));
-        break;
-      case PublishStrategy.ParallelWhenAll:
-      case PublishStrategy.Async:
-        await Promise.all(handlers.map((handler) => handler(notificaiton)));
-        break;
-      case PublishStrategy.SyncContinueOnException:
-        for (const handler of handlers) {
-          try {
-            await handler(notificaiton);
-          } catch (error) {
-            aggregateErrors.push(error);
-          }
-        }
-
-        if (aggregateErrors.length > 0) {
-          throw new AggregateError(aggregateErrors);
-        }
-
-        break;
-      case PublishStrategy.SyncStopOnException:
-        for (const handler of handlers) {
-          await handler(notificaiton);
-        }
-        break;
-      default:
-        throw new Error(`Invalid publish strategy`);
-    }
+    await publisher.publish(
+      notification,
+      this.#notificationHandlers.get(notification),
+    );
   }
 
   public send<TRequest extends Request>(
-    requestOrNotification: TRequest,
+    request: TRequest,
   ): Response<TRequest> {
-    if (
-      requestOrNotification instanceof Request &&
-      this.isRequestConstructor(requestOrNotification.constructor)
-    ) {
-      const { name, requestTypeId } = requestOrNotification.constructor;
-
-      if (!(requestTypeId in this.#requestHandlers)) {
-        throw new Error(`No handler found for request, ${name}`);
-      }
-
-      const handler = this.#requestHandlers[requestTypeId];
-
-      return handler(requestOrNotification);
+    if (TypeGuards.isRequest<TRequest>(request)) {
+      const handler = this.#requestHandlers.get<TRequest>(request);
+      return handler(request);
     }
 
     throw new Error(`Invalid request`);
-  }
-
-  private isNotificationConstructor<TNotification extends Notification>(
-    constructor: AnyType,
-  ): constructor is NotificationConstructor<TNotification> {
-    return (
-      constructor.notificationTypeId != null &&
-      typeof constructor.notificationTypeId === "symbol"
-    );
-  }
-
-  private isRequestConstructor<TRequest extends Request>(
-    constructor: AnyType,
-  ): constructor is RequestConstructor<TRequest> {
-    return (
-      constructor.requestTypeId != null &&
-      typeof constructor.requestTypeId === "symbol"
-    );
   }
 }

@@ -1,14 +1,10 @@
-import {
-  assertEquals,
-  assertRejects,
-  assertThrows,
-} from "https://deno.land/std@0.122.0/testing/asserts.ts";
 import { Mediator } from "./mediator.ts";
 import { Notification } from "./notification.ts";
 import { PublishStrategy } from "./publish-strategy.ts";
 import { Request } from "./request.ts";
+import { Rhum } from "https://deno.land/x/rhum@v1.1.12/mod.ts";
 
-Deno.test("Mediator", async (t) => {
+Rhum.testPlan("Mediator", () => {
   // Setup
   class TestClass1 extends Request<Promise<number>> {}
   class TestClass3 extends Request {}
@@ -20,51 +16,70 @@ Deno.test("Mediator", async (t) => {
   });
   const expected = 42;
 
-  await t.step("can add handler for request type", () => {
-    mediator.handle(TestClass1, () => Promise.resolve(expected));
+  Rhum.testSuite("handle()", () => {
+    Rhum.testCase("when request type, it succeeds", () => {
+      mediator.handle(TestClass1, () => Promise.resolve(expected));
+    });
+
+    Rhum.testCase("when notification type, it succeeds", () => {
+      mediator.handle(TestNotification1, () => Promise.resolve());
+    });
+
+    Rhum.testCase(
+      "when multiple handlers for same notification type, it succeeds",
+      () => {
+        mediator.handle(TestNotification1, () => Promise.resolve());
+      },
+    );
+
+    Rhum.testCase(
+      "when handler for request type previously registered, it fails",
+      () => {
+        Rhum.asserts.assertThrows(() => {
+          mediator.handle(TestClass1, () => Promise.resolve(expected));
+        });
+      },
+    );
   });
 
-  await t.step("can add handler for notification type", () => {
-    mediator.handle(TestNotification1, () => Promise.resolve());
-  });
-
-  await t.step("can add multiple handlers for same notification type", () => {
-    mediator.handle(TestNotification1, () => Promise.resolve());
-  });
-
-  await t.step("can add handler with no response for request type", () => {
+  Rhum.testSuite("send()", () => {
     mediator.handle(TestClass3, () => {});
-    mediator.send(new TestClass3());
+
+    Rhum.testCase("when handler with void response, it succeeds", () => {
+      mediator.send(new TestClass3());
+    });
+
+    Rhum.testCase("when handler with value response, it succeeds", async () => {
+      Rhum.asserts.assertEquals(
+        await mediator.send(new TestClass1()),
+        expected,
+      );
+    });
+
+    Rhum.testCase(
+      "when no registered handler, it throws exception",
+      () => {
+        Rhum.asserts.assertThrows(() =>
+          mediator.send(new UnregisteredRequest())
+        );
+      },
+    );
+
+    Rhum.testCase(
+      "when no registered async handler, it throws exception",
+      () => {
+        Rhum.asserts.assertRejects(() =>
+          mediator.send(new UnregisteredPromiseRequest())
+        );
+      },
+    );
   });
 
-  await t.step(
-    "cannot add a request handler for the same type more than once",
-    () => {
-      assertThrows(() => {
-        mediator.handle(TestClass1, () => Promise.resolve(expected));
-      });
-    },
-  );
-
-  await t.step("send request calls correct handler", async () => {
-    assertEquals(await mediator.send(new TestClass1()), expected);
+  Rhum.testSuite("publish()", () => {
+    Rhum.testCase("when notification, it calls correct handlers", async () => {
+      await mediator.publish(new TestNotification1());
+    });
   });
-
-  await t.step("publish notification calls correct handlers", async () => {
-    await mediator.publish(new TestNotification1());
-  });
-
-  await t.step(
-    "send request has exception if there is no registered handler",
-    () => {
-      assertThrows(() => mediator.send(new UnregisteredRequest()));
-    },
-  );
-
-  await t.step(
-    "send async request has exception if there is no registered handler",
-    () => {
-      assertRejects(() => mediator.send(new UnregisteredPromiseRequest()));
-    },
-  );
 });
+
+Rhum.run();

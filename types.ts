@@ -17,15 +17,17 @@ export type RequestHandler<TRequest extends Request = Request<AnyType>> = (
   request: TRequest,
 ) => Response<TRequest>;
 
-export type NotificationHandler<TNotification extends Notification> = (
+export type NotificationHandler<
+  TNotification extends Notification = Notification,
+> = (
   notification: TNotification,
-) => Promise<void>;
+) => Promise<void> | void;
 
 export type Handler<T> = T extends Request ? RequestHandler<T>
   : T extends Notification ? NotificationHandler<T>
   : never;
 
-export type RequestConstructor<TRequest extends Request> =
+export type RequestConstructor<TRequest extends Request = Request> =
   & (new (
     ...args: AnyType
   ) => AnyType)
@@ -36,7 +38,9 @@ export type RequestConstructor<TRequest extends Request> =
     requestTypeId: symbol;
   };
 
-export type NotificationConstructor<TNotification extends Notification> =
+export type NotificationConstructor<
+  TNotification extends Notification = Notification,
+> =
   & (new (
     ...args: AnyType
   ) => AnyType)
