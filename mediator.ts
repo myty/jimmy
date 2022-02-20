@@ -4,10 +4,11 @@ import { Request } from "./request.ts";
 import { RequestHandlerStore } from "./request-handler-store.ts";
 import { NotificationHandlerStore } from "./notification-handler-store.ts";
 import {
-  AnyType,
   Constructor,
   Handler,
+  HandlerDefinition,
   NotificationHandler,
+  RequestOrNotification,
   Response,
 } from "./types.ts";
 import { IPublisher, PublisherFactory } from "./publisher-factory.ts";
@@ -15,9 +16,13 @@ import { TypeGuards } from "./type-guards.ts";
 
 interface MediatorConfig {
   publishStratey?: PublishStrategy;
+  handlerDefinitions?: HandlerDefinition[];
 }
 
-export class Mediator {
+/**
+ * Main mediator class that handles requests and notifications
+ */
+class Mediator {
   #notificationHandlers: NotificationHandlerStore =
     new NotificationHandlerStore();
   #requestHandlers: RequestHandlerStore = new RequestHandlerStore();
@@ -28,11 +33,20 @@ export class Mediator {
       config?.publishStratey ??
         PublishStrategy.SyncContinueOnException,
     );
+
+    if (config?.handlerDefinitions != null) {
+      config.handlerDefinitions.forEach(({ type, handle }) => {
+        this.handle<RequestOrNotification>(type, handle);
+      });
+    }
   }
 
-  public handle<TRequest extends (Request<AnyType> | Notification)>(
-    constructor: Constructor<TRequest>,
-    handler: Handler<TRequest>,
+  /**
+   * Register a request or notification handler
+   */
+  public handle<THandler extends RequestOrNotification>(
+    constructor: Constructor<THandler>,
+    handler: Handler<THandler>,
   ): void {
     if (TypeGuards.isRequestConstructor(constructor)) {
       this.#requestHandlers.add(constructor, handler);
@@ -50,6 +64,9 @@ export class Mediator {
     throw new Error(`Invalid request or notification`);
   }
 
+  /**
+   * Publish a notification
+   */
   public async publish<TNotification extends Notification>(
     notification: TNotification,
     publishStrategy?: PublishStrategy,
@@ -70,6 +87,9 @@ export class Mediator {
     );
   }
 
+  /**
+   * Send a request
+   */
   public send<TRequest extends Request>(
     request: TRequest,
   ): Response<TRequest> {
@@ -81,3 +101,5 @@ export class Mediator {
     throw new Error(`Invalid request`);
   }
 }
+
+export { Mediator };
