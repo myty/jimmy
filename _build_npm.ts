@@ -27,7 +27,7 @@ async function start() {
     },
     package: {
       name: "jimmy-js",
-      version: Deno.args[0].substring(1),
+      version: Deno.args[0].substring("refs/tags/v".length),
       description: "An simple mediator for both Deno and Node.js",
       license: "MIT",
       author: "Michael Tyson",
