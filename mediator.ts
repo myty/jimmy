@@ -8,6 +8,7 @@ import {
   Handler,
   HandlerDefinition,
   NotificationHandler,
+  RequestHandler,
   RequestOrNotification,
   Response,
 } from "./types.ts";
@@ -26,10 +27,10 @@ class Mediator {
   #notificationHandlers: NotificationHandlerStore =
     new NotificationHandlerStore();
   #requestHandlers: RequestHandlerStore = new RequestHandlerStore();
-  #publishStrategy: IPublisher;
+  #publisher: IPublisher;
 
   constructor(config?: MediatorConfig) {
-    this.#publishStrategy = PublisherFactory.create(
+    this.#publisher = PublisherFactory.create(
       config?.publishStratey ??
         PublishStrategy.SyncContinueOnException,
     );
@@ -49,7 +50,10 @@ class Mediator {
     handler: Handler<THandler>,
   ): void {
     if (TypeGuards.isRequestConstructor(constructor)) {
-      this.#requestHandlers.add(constructor, handler);
+      this.#requestHandlers.add(
+        constructor,
+        handler as RequestHandler<Request>,
+      );
       return;
     }
 
@@ -73,7 +77,7 @@ class Mediator {
   ): Promise<void> {
     const publisher = publishStrategy != null
       ? PublisherFactory.create(publishStrategy)
-      : this.#publishStrategy;
+      : this.#publisher;
 
     if (!TypeGuards.isNotification(notification)) {
       throw new Error(
@@ -99,6 +103,10 @@ class Mediator {
     }
 
     throw new Error(`Invalid request`);
+  }
+
+  public async stop() {
+    await this.#publisher.stop();
   }
 }
 

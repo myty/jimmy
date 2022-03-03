@@ -6,9 +6,10 @@ import handlerDefinitions from "./handlers/index.ts";
 import { PublishStrategy } from "../../publish-strategy.ts";
 
 const mediator = new Mediator({
-  publishStratey: PublishStrategy.ParallelWhenAll,
+  publishStratey: PublishStrategy.ParallelWhenAny,
   handlerDefinitions: handlerDefinitions,
 });
 
 const notificaiton = await mediator.send(new RandomAdviceRequest());
 await mediator.publish(notificaiton);
+await mediator.stop();

@@ -21,6 +21,7 @@ export type NotificationHandler<
   TNotification extends Notification = Notification,
 > = (
   notification: TNotification,
+  onAbort: (callback: () => void) => void,
 ) => Promise<void> | void;
 
 export type Handler<T extends RequestOrNotification = RequestOrNotification> =
