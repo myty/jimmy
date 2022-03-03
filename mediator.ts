@@ -18,16 +18,21 @@ interface MediatorConfig {
 }
 
 export class Mediator {
-  #notificationHandlers: NotificationHandlerStore =
-    new NotificationHandlerStore();
-  #requestHandlers: RequestHandlerStore = new RequestHandlerStore();
-  #publishStrategy: IPublisher;
+  private _notificationHandlers: NotificationHandlerStore;
+  private _requestHandlers: RequestHandlerStore;
+  private _publishStrategy: IPublisher;
 
   constructor(config?: MediatorConfig) {
-    this.#publishStrategy = PublisherFactory.create(
+    this._publishStrategy = PublisherFactory.create(
       config?.publishStratey ??
         PublishStrategy.SyncContinueOnException,
     );
+    this._notificationHandlers = new NotificationHandlerStore();
+    this._requestHandlers = new RequestHandlerStore();
+
+    this.handle = this.handle.bind(this);
+    this.publish = this.publish.bind(this);
+    this.send = this.send.bind(this);
   }
 
   public handle<TRequest extends (Request<AnyType> | Notification)>(
@@ -35,12 +40,12 @@ export class Mediator {
     handler: Handler<TRequest>,
   ): void {
     if (TypeGuards.isRequestConstructor(constructor)) {
-      this.#requestHandlers.add(constructor, handler);
+      this._requestHandlers.add(constructor, handler);
       return;
     }
 
     if (TypeGuards.isNotificationConstructor(constructor)) {
-      this.#notificationHandlers.add(
+      this._notificationHandlers.add(
         constructor,
         handler as NotificationHandler,
       );
@@ -56,7 +61,7 @@ export class Mediator {
   ): Promise<void> {
     const publisher = publishStrategy != null
       ? PublisherFactory.create(publishStrategy)
-      : this.#publishStrategy;
+      : this._publishStrategy;
 
     if (!TypeGuards.isNotification(notification)) {
       throw new Error(
@@ -66,7 +71,7 @@ export class Mediator {
 
     await publisher.publish(
       notification,
-      this.#notificationHandlers.get(notification),
+      this._notificationHandlers.get(notification),
     );
   }
 
@@ -74,7 +79,7 @@ export class Mediator {
     request: TRequest,
   ): Response<TRequest> {
     if (TypeGuards.isRequest<TRequest>(request)) {
-      const handler = this.#requestHandlers.get<TRequest>(request);
+      const handler = this._requestHandlers.get<TRequest>(request);
       return handler(request);
     }
 
