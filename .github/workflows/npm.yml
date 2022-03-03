@@ -9,15 +9,27 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
+
       - uses: denoland/setup-deno@v1.0.0
         with:
           deno-version: v1.x
-      # Setup .npmrc file to publish to npm
+
+      - name: check format
+        run: deno fmt --check
+
+      - name: check linting
+        run: deno lint
+
+      - name: build npm package
+        run: deno run -A _build_npm.ts {{ github.ref }}
+
       - uses: actions/setup-node@v2
         with:
           node-version: '16.x'
           registry-url: 'https://registry.npmjs.org'
-      - run: npm run prepare
-      - run: npm publish
+
+      - run: |
+          cd npm
+          npm publish
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
