@@ -21,14 +21,15 @@ jobs:
         run: deno lint
 
       - name: build npm package
-        run: deno run -A _build_npm.ts {{ github.ref }}
+        run: deno run -A _build_npm.ts ${{ github.ref }}
 
       - uses: actions/setup-node@v2
         with:
           node-version: '16.x'
           registry-url: 'https://registry.npmjs.org'
 
-      - run: |
+      - name: publish npm package
+        run: |
           cd npm
           npm publish
         env:
