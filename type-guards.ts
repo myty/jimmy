@@ -28,6 +28,7 @@ function isRequest<TRequest extends Request>(
 }
 
 function isRequestConstructor(
+  // deno-lint-ignore ban-types
   constructor: Function & { requestTypeId?: symbol },
 ): constructor is RequestConstructor {
   return (
