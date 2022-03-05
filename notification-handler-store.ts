@@ -3,20 +3,19 @@ import { TypeGuards } from "./type-guards.ts";
 import { NotificationConstructor, NotificationHandler } from "./types.ts";
 
 export class NotificationHandlerStore {
-  private _handlers: Record<symbol, Array<NotificationHandler>> = {};
+  private readonly _handlers: Map<symbol, Array<NotificationHandler>> =
+    new Map();
 
   public add<TNotification extends Notification>(
     constructor: NotificationConstructor<TNotification>,
     handler: NotificationHandler<TNotification>,
   ) {
     const { notificationTypeId } = constructor;
-    this._handlers = {
-      ...this._handlers,
-      [notificationTypeId]: [
-        ...(this._handlers[notificationTypeId] ?? []),
-        handler as NotificationHandler,
-      ],
-    };
+
+    this._handlers.set(notificationTypeId, [
+      ...(this._handlers.get(notificationTypeId) ?? []),
+      handler as NotificationHandler,
+    ]);
   }
 
   public get<TNotification extends Notification>(
@@ -27,7 +26,27 @@ export class NotificationHandlerStore {
     }
 
     const { constructor } = notification;
-    const handlers = this._handlers[constructor.notificationTypeId] ?? [];
-    return handlers;
+
+    return this._handlers.get(constructor.notificationTypeId) ?? [];
+  }
+
+  public remove<TNotification extends Notification>(
+    constructor: NotificationConstructor<TNotification>,
+    handler: NotificationHandler<TNotification>,
+  ) {
+    const { name, notificationTypeId } = constructor;
+    const foundHandlers = this._handlers.get(notificationTypeId) ?? [];
+    const foundHandlerIndex = foundHandlers.indexOf(
+      handler as NotificationHandler,
+    );
+
+    if (foundHandlerIndex < 0) {
+      throw new Error(`No handler found for notification, ${name}`);
+    }
+
+    this._handlers.set(notificationTypeId, [
+      ...foundHandlers.slice(0, foundHandlerIndex),
+      ...foundHandlers.slice(foundHandlerIndex + 1),
+    ]);
   }
 }

@@ -1,6 +1,7 @@
 import { Request } from "./request.ts";
 import { RequestHandlerStore } from "./request-handler-store.ts";
 import { Rhum } from "https://deno.land/x/rhum@v1.1.12/mod.ts";
+import { Handler } from "./types.ts";
 
 // Setup
 class TestRequest1 extends Request {
@@ -87,6 +88,40 @@ Rhum.testPlan("RequestHandlerStore", () => {
         store.get(new TestRequest3());
       });
     });
+  });
+
+  Rhum.testSuite("remove()", () => {
+    let store: RequestHandlerStore;
+    Rhum.beforeEach(() => {
+      store = new RequestHandlerStore();
+    });
+
+    Rhum.testCase("can remove a RequestHandler", () => {
+      const handler: Handler<TestRequest1> = (request) => {
+        request.test1;
+      };
+      const request = new TestRequest1();
+
+      store.add(TestRequest1, handler);
+      const foundHandler = store.get(request);
+
+      Rhum.asserts.assertEquals(foundHandler, handler);
+
+      store.remove(TestRequest1, handler);
+
+      Rhum.asserts.assertThrows(() => store.get(request));
+    });
+
+    Rhum.testCase(
+      "removing a RequestHandler that is not in store, throws exception",
+      () => {
+        const handler: Handler<TestRequest1> = (request) => {
+          request.test1;
+        };
+
+        Rhum.asserts.assertThrows(() => store.remove(TestRequest1, handler));
+      },
+    );
   });
 });
 

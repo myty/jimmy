@@ -13,10 +13,16 @@ import {
 import { IPublisher, PublisherFactory } from "./publisher-factory.ts";
 import { TypeGuards } from "./type-guards.ts";
 
+/**
+ * Configuration options for the mediator
+ */
 interface MediatorConfig {
   publishStratey?: PublishStrategy;
 }
 
+/**
+ * Main mediator class that handles requests and notifications
+ */
 export class Mediator {
   private _notificationHandlers: NotificationHandlerStore;
   private _requestHandlers: RequestHandlerStore;
@@ -35,6 +41,9 @@ export class Mediator {
     this.send = this.send.bind(this);
   }
 
+  /**
+   * Register a request or notification handler
+   */
   public handle<TRequest extends (Request<AnyType> | Notification)>(
     constructor: Constructor<TRequest>,
     handler: Handler<TRequest>,
@@ -55,6 +64,32 @@ export class Mediator {
     throw new Error(`Invalid request or notification`);
   }
 
+  /**
+   * Unregister a request or notification handler
+   */
+  public unhandle<TRequest extends (Request<AnyType> | Notification)>(
+    constructor: Constructor<TRequest>,
+    handler: Handler<TRequest>,
+  ): void {
+    if (TypeGuards.isRequestConstructor(constructor)) {
+      this._requestHandlers.remove(constructor, handler);
+      return;
+    }
+
+    if (TypeGuards.isNotificationConstructor(constructor)) {
+      this._notificationHandlers.remove(
+        constructor,
+        handler as NotificationHandler,
+      );
+      return;
+    }
+
+    throw new Error(`Invalid request or notification`);
+  }
+
+  /**
+   * Publish a notification
+   */
   public async publish<TNotification extends Notification>(
     notification: TNotification,
     publishStrategy?: PublishStrategy,
@@ -75,6 +110,9 @@ export class Mediator {
     );
   }
 
+  /**
+   * Send a request
+   */
   public send<TRequest extends Request>(
     request: TRequest,
   ): Response<TRequest> {
