@@ -15,6 +15,9 @@ import {
 import { IPublisher, PublisherFactory } from "./publisher-factory.ts";
 import { TypeGuards } from "./type-guards.ts";
 
+/**
+ * Configuration options for the mediator
+ */
 interface MediatorConfig {
   publishStratey?: PublishStrategy;
   handlerDefinitions?: HandlerDefinition[];
@@ -23,14 +26,13 @@ interface MediatorConfig {
 /**
  * Main mediator class that handles requests and notifications
  */
-class Mediator {
-  #notificationHandlers: NotificationHandlerStore =
-    new NotificationHandlerStore();
-  #requestHandlers: RequestHandlerStore = new RequestHandlerStore();
-  #publisher: IPublisher;
+export class Mediator {
+  private _notificationHandlers: NotificationHandlerStore;
+  private _requestHandlers: RequestHandlerStore;
+  private _publishStrategy: IPublisher;
 
   constructor(config?: MediatorConfig) {
-    this.#publisher = PublisherFactory.create(
+    this._publishStrategy = PublisherFactory.create(
       config?.publishStratey ??
         PublishStrategy.SyncContinueOnException,
     );
@@ -40,6 +42,13 @@ class Mediator {
         this.handle<RequestOrNotification>(type, handle);
       });
     }
+
+    this._notificationHandlers = new NotificationHandlerStore();
+    this._requestHandlers = new RequestHandlerStore();
+
+    this.handle = this.handle.bind(this);
+    this.publish = this.publish.bind(this);
+    this.send = this.send.bind(this);
   }
 
   /**
@@ -50,7 +59,7 @@ class Mediator {
     handler: Handler<THandler>,
   ): void {
     if (TypeGuards.isRequestConstructor(constructor)) {
-      this.#requestHandlers.add(
+      this._requestHandlers.add(
         constructor,
         handler as RequestHandler<Request>,
       );
@@ -58,7 +67,33 @@ class Mediator {
     }
 
     if (TypeGuards.isNotificationConstructor(constructor)) {
-      this.#notificationHandlers.add(
+      this._notificationHandlers.add(
+        constructor,
+        handler as NotificationHandler,
+      );
+      return;
+    }
+
+    throw new Error(`Invalid request or notification`);
+  }
+
+  /**
+   * Unregister a request or notification handler
+   */
+  public unhandle<THandler extends RequestOrNotification>(
+    constructor: Constructor<THandler>,
+    handler: Handler<THandler>,
+  ): void {
+    if (TypeGuards.isRequestConstructor(constructor)) {
+      this._requestHandlers.remove(
+        constructor,
+        handler as RequestHandler<Request>,
+      );
+      return;
+    }
+
+    if (TypeGuards.isNotificationConstructor(constructor)) {
+      this._notificationHandlers.remove(
         constructor,
         handler as NotificationHandler,
       );
@@ -77,7 +112,7 @@ class Mediator {
   ): Promise<void> {
     const publisher = publishStrategy != null
       ? PublisherFactory.create(publishStrategy)
-      : this.#publisher;
+      : this._publishStrategy;
 
     if (!TypeGuards.isNotification(notification)) {
       throw new Error(
@@ -87,7 +122,7 @@ class Mediator {
 
     await publisher.publish(
       notification,
-      this.#notificationHandlers.get(notification),
+      this._notificationHandlers.get(notification),
     );
   }
 
@@ -98,7 +133,7 @@ class Mediator {
     request: TRequest,
   ): Response<TRequest> {
     if (TypeGuards.isRequest<TRequest>(request)) {
-      const handler = this.#requestHandlers.get<TRequest>(request);
+      const handler = this._requestHandlers.get<TRequest>(request);
       return handler(request);
     }
 
@@ -106,8 +141,6 @@ class Mediator {
   }
 
   public async stop() {
-    await this.#publisher.stop();
+    await this._publishStrategy.stop();
   }
 }
-
-export { Mediator };
