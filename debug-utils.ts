@@ -1,3 +1,4 @@
+// deno-lint-ignore no-explicit-any
 export function debug(...data: any[]) {
   const [arg1, ...args] = data;
 
