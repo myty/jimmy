@@ -4,7 +4,7 @@ import { Rhum } from "https://deno.land/x/rhum@v1.1.12/mod.ts";
 import { Handler } from "./types.ts";
 
 // Setup
-class TestRequest1 extends Request<void> {
+class TestRequest1 extends Request {
   public test1 = "test1";
 }
 
@@ -12,7 +12,7 @@ class TestRequest2 extends Request<string> {
   public test2 = "test2";
 }
 
-class TestRequest3 extends Request<void> {
+class TestRequest3 extends Request {
   public test2 = "test3";
 }
 
