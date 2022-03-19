@@ -1,10 +1,6 @@
 import { Notification } from "./notification.ts";
 import { Request } from "./request.ts";
-import {
-  AnyType,
-  NotificationConstructor,
-  RequestConstructor,
-} from "./types.ts";
+import { NotificationConstructor, RequestConstructor } from "./types.ts";
 
 function isNotification<TNotification extends Notification>(
   request: TNotification,
@@ -13,7 +9,7 @@ function isNotification<TNotification extends Notification>(
 }
 
 function isNotificationConstructor<TNotification extends Notification>(
-  constructor: AnyType,
+  constructor: Partial<typeof Notification>,
 ): constructor is NotificationConstructor<TNotification> {
   return (
     constructor.notificationTypeId != null &&
@@ -28,8 +24,7 @@ function isRequest<TRequest extends Request>(
 }
 
 function isRequestConstructor(
-  // deno-lint-ignore ban-types
-  constructor: Function & { requestTypeId?: symbol },
+  constructor: Partial<typeof Request>,
 ): constructor is RequestConstructor {
   return (
     constructor.requestTypeId != null &&
