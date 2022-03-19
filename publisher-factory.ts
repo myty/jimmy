@@ -1,6 +1,7 @@
 import { PublishStrategy } from "./publish-strategy.ts";
 import { Notification } from "./notification.ts";
 import { NotificationHandler } from "./types.ts";
+import { debug } from "./debug-utils.ts";
 
 const noOpCallback = (): void => {};
 
@@ -13,9 +14,46 @@ export interface IPublisher {
   stop(): Promise<void>;
 }
 
+class PendingPromisesState {
+  private runningHandlers = 0;
+  private doneWaitingTrigger = () => {};
+
+  constructor() {
+    this.increment = this.increment.bind(this);
+    this.decrement = this.decrement.bind(this);
+    this.waitToClear = this.waitToClear.bind(this);
+  }
+
+  public increment(): void {
+    this.runningHandlers += 1;
+  }
+
+  public decrement(): void {
+    this.runningHandlers -= 1;
+
+    if (this.runningHandlers < 1) {
+      this.doneWaitingTrigger();
+    }
+  }
+
+  public async waitToClear(): Promise<void> {
+    if (this.runningHandlers < 1) {
+      return;
+    }
+
+    await new Promise<void>((resolve) => {
+      this.doneWaitingTrigger = () => {
+        debug("All handlers are done");
+        resolve();
+      };
+    });
+  }
+}
+
 const buildPublisher = (publish: IPublisher["publish"]): IPublisher => {
-  let isStarted = true;
   let abortController = new AbortController();
+  let isStarted = true;
+  const pendingPromises: PendingPromisesState = new PendingPromisesState();
 
   return ({
     async publish<TNotification extends Notification>(
@@ -29,32 +67,35 @@ const buildPublisher = (publish: IPublisher["publish"]): IPublisher => {
       const wrappedHandlers = handlers.map(
         (handler): NotificationHandler<TNotification> => {
           return async (notification) => {
-            try {
-              let cleanupEventListener: () => void = noOpCallback;
+            let cleanupEventListener: () => void = noOpCallback;
 
-              await handler(notification, function (onAbortCallback) {
-                cleanupEventListener = () => {
-                  abortController.signal.removeEventListener(
-                    "abort",
-                    onAbortCallback,
-                  );
-                };
-
-                abortController.signal.addEventListener(
+            await handler(notification, function (onAbortCallback) {
+              cleanupEventListener = () => {
+                abortController.signal.removeEventListener(
                   "abort",
                   onAbortCallback,
                 );
-              });
+              };
 
-              cleanupEventListener();
-            } catch (error) {
-              return error;
-            }
+              abortController.signal.addEventListener(
+                "abort",
+                onAbortCallback,
+              );
+            });
+
+            cleanupEventListener();
           };
         },
       );
 
-      await publish(notification, wrappedHandlers);
+      try {
+        pendingPromises.increment();
+        await publish(notification, wrappedHandlers);
+      } catch (error) {
+        throw error;
+      } finally {
+        pendingPromises.decrement();
+      }
     },
     async start() {
       if (isStarted) {
@@ -70,7 +111,8 @@ const buildPublisher = (publish: IPublisher["publish"]): IPublisher => {
       isStarted = false;
       abortController.abort();
 
-      await Promise.resolve();
+      // Wait for all running handlers to finish
+      await pendingPromises.waitToClear();
     },
   });
 };
@@ -140,6 +182,31 @@ const parallelWhenAllPublisher = buildPublisher(
   },
 );
 
+const parallelAsyncPublisher = buildPublisher(
+  async (notification, handlers) => {
+    const results = await Promise.allSettled(
+      handlers.map(async (handler) => {
+        try {
+          await handler(notification, noOpCallback);
+        } catch (error) {
+          return error;
+        }
+      }),
+    );
+
+    const aggregateErrors: PromiseSettledResult<Error>[] = results
+      .filter((
+        result,
+      ): result is PromiseFulfilledResult<
+        Error
+      > => (result.status === "fulfilled" && result.value instanceof Error));
+
+    if (aggregateErrors.length > 0) {
+      throw new AggregateError(aggregateErrors);
+    }
+  },
+);
+
 const syncContinueOnExceptionPublisher = buildPublisher(
   async (notification, handlers) => {
     const aggregateErrors: Error[] = [];
@@ -173,7 +240,7 @@ const publishers: Record<
   [PublishStrategy.ParallelNoWait]: parallelNoWaitPublisher,
   [PublishStrategy.ParallelWhenAny]: parallelWhenAnyPublisher,
   [PublishStrategy.ParallelWhenAll]: parallelWhenAllPublisher,
-  [PublishStrategy.Async]: parallelWhenAllPublisher,
+  [PublishStrategy.Async]: parallelAsyncPublisher,
   [PublishStrategy.SyncContinueOnException]: syncContinueOnExceptionPublisher,
   [PublishStrategy.SyncStopOnException]: syncStopOnExceptionPublisher,
 };
@@ -181,7 +248,6 @@ const publishers: Record<
 export class PublisherFactory {
   static create(
     publishStrategy: PublishStrategy,
-    abortController?: AbortController,
   ): IPublisher {
     const publisher = publishers[publishStrategy];
 

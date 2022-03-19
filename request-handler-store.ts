@@ -3,7 +3,15 @@ import { TypeGuards } from "./type-guards.ts";
 import { RequestConstructor, RequestHandler } from "./types.ts";
 
 export class RequestHandlerStore {
-  private readonly _handlers: Map<symbol, RequestHandler> = new Map();
+  private readonly _handlers: Map<symbol, RequestHandler>;
+
+  constructor() {
+    this._handlers = new Map();
+
+    this.add = this.add.bind(this);
+    this.get = this.get.bind(this);
+    this.remove = this.remove.bind(this);
+  }
 
   public add<TRequest extends Request>(
     constructor: RequestConstructor<TRequest>,

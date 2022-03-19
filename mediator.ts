@@ -27,11 +27,18 @@ interface MediatorConfig {
  * Main mediator class that handles requests and notifications
  */
 export class Mediator {
-  private _notificationHandlers: NotificationHandlerStore;
-  private _requestHandlers: RequestHandlerStore;
-  private _publishStrategy: IPublisher;
+  private readonly _notificationHandlers: NotificationHandlerStore;
+  private readonly _requestHandlers: RequestHandlerStore;
+  private readonly _publishStrategy: IPublisher;
 
   constructor(config?: MediatorConfig) {
+    this._notificationHandlers = new NotificationHandlerStore();
+    this._requestHandlers = new RequestHandlerStore();
+
+    this.handle = this.handle.bind(this);
+    this.publish = this.publish.bind(this);
+    this.send = this.send.bind(this);
+
     this._publishStrategy = PublisherFactory.create(
       config?.publishStratey ??
         PublishStrategy.SyncContinueOnException,
@@ -42,13 +49,6 @@ export class Mediator {
         this.handle<RequestOrNotification>(type, handle);
       });
     }
-
-    this._notificationHandlers = new NotificationHandlerStore();
-    this._requestHandlers = new RequestHandlerStore();
-
-    this.handle = this.handle.bind(this);
-    this.publish = this.publish.bind(this);
-    this.send = this.send.bind(this);
   }
 
   /**
