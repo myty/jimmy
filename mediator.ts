@@ -4,7 +4,6 @@ import { Request } from "./request.ts";
 import { RequestHandlerStore } from "./request-handler-store.ts";
 import { NotificationHandlerStore } from "./notification-handler-store.ts";
 import {
-  AnyType,
   Constructor,
   Handler,
   NotificationHandler,
@@ -44,7 +43,7 @@ export class Mediator {
   /**
    * Register a request or notification handler
    */
-  public handle<TRequest extends (Request<AnyType> | Notification)>(
+  public handle<TRequest extends (Request | Notification)>(
     constructor: Constructor<TRequest>,
     handler: Handler<TRequest>,
   ): void {
@@ -67,7 +66,7 @@ export class Mediator {
   /**
    * Unregister a request or notification handler
    */
-  public unhandle<TRequest extends (Request<AnyType> | Notification)>(
+  public unhandle<TRequest extends (Request | Notification)>(
     constructor: Constructor<TRequest>,
     handler: Handler<TRequest>,
   ): void {
