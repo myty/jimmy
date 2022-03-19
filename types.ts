@@ -34,9 +34,7 @@ export type RequestConstructor<TRequest extends Request = Request> =
   & {
     prototype: TRequest;
   }
-  & {
-    requestTypeId: symbol;
-  };
+  & typeof Request;
 
 export type NotificationConstructor<
   TNotification extends Notification = Notification,
@@ -47,9 +45,7 @@ export type NotificationConstructor<
   & {
     prototype: TNotification;
   }
-  & {
-    notificationTypeId: symbol;
-  };
+  & typeof Notification;
 
 export type Constructor<T> = T extends Request ? RequestConstructor<T>
   : T extends Notification ? NotificationConstructor<T>
