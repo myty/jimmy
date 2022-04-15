@@ -1,4 +1,4 @@
-export abstract class Request<TResponse = void> {
+export abstract class Request<TResponse = unknown> {
   private static _requestTypeId: symbol;
 
   static get requestTypeId() {

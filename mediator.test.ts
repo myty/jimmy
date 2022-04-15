@@ -11,6 +11,7 @@ Rhum.testPlan("Mediator", () => {
   class UnregisteredRequest extends Request<number> {}
   class UnregisteredPromiseRequest extends Request<Promise<number>> {}
   class TestNotification1 extends Notification {}
+
   const mediator = new Mediator({
     publishStratey: PublishStrategy.SyncContinueOnException,
   });
