@@ -8,7 +8,7 @@ const noOpCallback = (): void => {};
 export interface IPublisher {
   publish<TNotification extends Notification>(
     notification: TNotification,
-    handlers: Array<NotificationHandler<TNotification>>,
+    handlers: NotificationHandler<TNotification>[],
   ): Promise<void>;
   start(): Promise<void>;
   stop(): Promise<void>;
@@ -50,6 +50,40 @@ class PendingPromisesState {
   }
 }
 
+function wrapHandlers<TNotification extends Notification>(
+  handlers: NotificationHandler<TNotification>[],
+  abortController: AbortController,
+): NotificationHandler<TNotification>[] {
+  return handlers.map(
+    (handler): NotificationHandler<TNotification> => {
+      return async (
+        notification,
+        onAbort,
+      ) => {
+        let cleanupEventListener: () => void = noOpCallback;
+
+        onAbort(cleanupEventListener);
+
+        await handler(notification, function (onAbortCallback) {
+          cleanupEventListener = () => {
+            abortController.signal.removeEventListener(
+              "abort",
+              onAbortCallback,
+            );
+          };
+
+          abortController.signal.addEventListener(
+            "abort",
+            onAbortCallback,
+          );
+        });
+
+        cleanupEventListener();
+      };
+    },
+  );
+}
+
 const buildPublisher = (publish: IPublisher["publish"]): IPublisher => {
   let abortController = new AbortController();
   let isStarted = true;
@@ -64,33 +98,9 @@ const buildPublisher = (publish: IPublisher["publish"]): IPublisher => {
         return;
       }
 
-      const wrappedHandlers = handlers.map(
-        (handler): NotificationHandler<TNotification> => {
-          return async (notification) => {
-            let cleanupEventListener: () => void = noOpCallback;
-
-            await handler(notification, function (onAbortCallback) {
-              cleanupEventListener = () => {
-                abortController.signal.removeEventListener(
-                  "abort",
-                  onAbortCallback,
-                );
-              };
-
-              abortController.signal.addEventListener(
-                "abort",
-                onAbortCallback,
-              );
-            });
-
-            cleanupEventListener();
-          };
-        },
-      );
-
       try {
         pendingPromises.increment();
-        await publish(notification, wrappedHandlers);
+        await publish(notification, wrapHandlers(handlers, abortController));
       } catch (error) {
         throw error;
       } finally {

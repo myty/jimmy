@@ -1,4 +1,7 @@
-export abstract class Request<TResponse = unknown> {
+import { RequestHandler } from "./types.ts";
+
+// deno-lint-ignore no-explicit-any
+export abstract class Request<TResponse = any> {
   private static _requestTypeId: symbol;
 
   static get requestTypeId() {
@@ -14,7 +17,10 @@ export abstract class Request<TResponse = unknown> {
     return this._requestTypeId;
   }
 
-  type(): TResponse {
-    throw new Error("Method not implemented.");
+  getResponse<TRequest extends Request>(
+    this: TRequest,
+    handler: RequestHandler<TRequest>,
+  ): TResponse {
+    return handler(this);
   }
 }

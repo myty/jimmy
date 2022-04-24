@@ -7,7 +7,7 @@ import { Rhum } from "https://deno.land/x/rhum@v1.1.12/mod.ts";
 Rhum.testPlan("Mediator", () => {
   // Setup
   class TestClass1 extends Request<Promise<number>> {}
-  class TestClass3 extends Request {}
+  class TestClass3 extends Request<void> {}
   class UnregisteredRequest extends Request<number> {}
   class UnregisteredPromiseRequest extends Request<Promise<number>> {}
   class TestNotification1 extends Notification {}
