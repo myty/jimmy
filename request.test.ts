@@ -1,19 +1,20 @@
 import { Request } from "./request.ts";
-import { Rhum } from "https://deno.land/x/rhum@v1.1.12/mod.ts";
+import {
+  assertNotEquals,
+} from "https://deno.land/std@0.136.0/testing/asserts.ts";
+import { describe, it } from "https://deno.land/std@0.136.0/testing/bdd.ts";
 
-Rhum.testPlan("Request", () => {
+describe("Request", () => {
   // Setup
   class TestClass1 extends Request<Promise<number>> {}
   class TestClass2 extends Request<Promise<number>> {}
 
-  Rhum.testSuite("requestTypeId", () => {
-    Rhum.testCase("is unique for each request class", () => {
-      Rhum.asserts.assertNotEquals(
+  describe("requestTypeId", () => {
+    it("is unique for each request class", () => {
+      assertNotEquals(
         TestClass1.requestTypeId,
         TestClass2.requestTypeId,
       );
     });
   });
 });
-
-Rhum.run();

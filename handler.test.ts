@@ -1,5 +1,10 @@
 import { Notification } from "./notification.ts";
-import { Rhum } from "https://deno.land/x/rhum@v1.1.12/mod.ts";
+import { assertEquals } from "https://deno.land/std@0.136.0/testing/asserts.ts";
+import {
+  beforeEach,
+  describe,
+  it,
+} from "https://deno.land/std@0.136.0/testing/bdd.ts";
 import { NotificationHandlerStore } from "./notification-handler-store.ts";
 
 // Setup
@@ -15,25 +20,25 @@ class TestNotification3 extends Notification {
   public test2 = "test3";
 }
 
-Rhum.testPlan("handler", () => {
-  Rhum.testSuite("constructor()", () => {
+describe("handler", () => {
+  describe("constructor()", () => {
     const store = new NotificationHandlerStore();
 
-    Rhum.testCase("initializes", () => {
-      Rhum.asserts.assertEquals(
+    it("initializes", () => {
+      assertEquals(
         store instanceof NotificationHandlerStore,
         true,
       );
     });
   });
 
-  Rhum.testSuite("add()", () => {
+  describe("add()", () => {
     let store: NotificationHandlerStore;
-    Rhum.beforeEach(() => {
+    beforeEach(() => {
       store = new NotificationHandlerStore();
     });
 
-    Rhum.testCase("can add NotificationHandlers", () => {
+    it("can add NotificationHandlers", () => {
       store.add(TestNotification1, (notification) => {
         notification.test1;
       });
@@ -42,7 +47,7 @@ Rhum.testPlan("handler", () => {
       });
     });
 
-    Rhum.testCase("can add multiple NotificationHandlers for same type", () => {
+    it("can add multiple NotificationHandlers for same type", () => {
       store.add(TestNotification1, (notification) => {
         notification.test1;
       });
@@ -52,7 +57,7 @@ Rhum.testPlan("handler", () => {
     });
   });
 
-  Rhum.testSuite("get()", () => {
+  describe("get()", () => {
     let store: NotificationHandlerStore;
 
     const notificationHandler1 = (notification: TestNotification1) => {
@@ -65,37 +70,35 @@ Rhum.testPlan("handler", () => {
       notification.test2;
     };
 
-    Rhum.beforeEach(() => {
+    beforeEach(() => {
       store = new NotificationHandlerStore();
       store.add(TestNotification1, notificationHandler1);
       store.add(TestNotification1, notificationHandler2);
       store.add(TestNotification2, notificationHandler3);
     });
 
-    Rhum.testCase("returns correct NotificationHandlers", () => {
+    it("returns correct NotificationHandlers", () => {
       const handlers = store.get(new TestNotification1());
 
-      Rhum.asserts.assertEquals(handlers.length, 2);
-      Rhum.asserts.assertEquals(handlers, [
+      assertEquals(handlers.length, 2);
+      assertEquals(handlers, [
         notificationHandler1,
         notificationHandler2,
       ]);
 
       const handlers2 = store.get(new TestNotification2());
 
-      Rhum.asserts.assertEquals(handlers2.length, 1);
-      Rhum.asserts.assertEquals(handlers2, [
+      assertEquals(handlers2.length, 1);
+      assertEquals(handlers2, [
         notificationHandler3,
       ]);
     });
 
-    Rhum.testCase("when no register handlers, it returns empty array", () => {
+    it("when no register handlers, it returns empty array", () => {
       const handlers = store.get(new TestNotification3());
 
-      Rhum.asserts.assertEquals(handlers.length, 0);
-      Rhum.asserts.assertEquals(handlers, []);
+      assertEquals(handlers.length, 0);
+      assertEquals(handlers, []);
     });
   });
 });
-
-Rhum.run();

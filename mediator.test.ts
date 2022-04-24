@@ -2,9 +2,14 @@ import { Mediator } from "./mediator.ts";
 import { Notification } from "./notification.ts";
 import { PublishStrategy } from "./publish-strategy.ts";
 import { Request } from "./request.ts";
-import { Rhum } from "https://deno.land/x/rhum@v1.1.12/mod.ts";
+import {
+  assertEquals,
+  assertRejects,
+  assertThrows,
+} from "https://deno.land/std@0.136.0/testing/asserts.ts";
+import { describe, it } from "https://deno.land/std@0.136.0/testing/bdd.ts";
 
-Rhum.testPlan("Mediator", () => {
+describe("Mediator", () => {
   // Setup
   class TestClass1 extends Request<Promise<number>> {}
   class TestClass3 extends Request<void> {}
@@ -17,70 +22,64 @@ Rhum.testPlan("Mediator", () => {
   });
   const expected = 42;
 
-  Rhum.testSuite("handle()", () => {
-    Rhum.testCase("when request type, it succeeds", () => {
+  describe("handle()", () => {
+    it("when request type, it succeeds", () => {
       mediator.handle(TestClass1, () => Promise.resolve(expected));
     });
 
-    Rhum.testCase("when notification type, it succeeds", () => {
+    it("when notification type, it succeeds", () => {
       mediator.handle(TestNotification1, () => Promise.resolve());
     });
 
-    Rhum.testCase(
+    it(
       "when multiple handlers for same notification type, it succeeds",
       () => {
         mediator.handle(TestNotification1, () => Promise.resolve());
       },
     );
 
-    Rhum.testCase(
+    it(
       "when handler for request type previously registered, it fails",
       () => {
-        Rhum.asserts.assertThrows(() => {
+        assertThrows(() => {
           mediator.handle(TestClass1, () => Promise.resolve(expected));
         });
       },
     );
   });
 
-  Rhum.testSuite("send()", () => {
+  describe("send()", () => {
     mediator.handle(TestClass3, () => {});
 
-    Rhum.testCase("when handler with void response, it succeeds", () => {
+    it("when handler with void response, it succeeds", () => {
       mediator.send(new TestClass3());
     });
 
-    Rhum.testCase("when handler with value response, it succeeds", async () => {
-      Rhum.asserts.assertEquals(
+    it("when handler with value response, it succeeds", async () => {
+      assertEquals(
         await mediator.send(new TestClass1()),
         expected,
       );
     });
 
-    Rhum.testCase(
+    it(
       "when no registered handler, it throws exception",
       () => {
-        Rhum.asserts.assertThrows(() =>
-          mediator.send(new UnregisteredRequest())
-        );
+        assertThrows(() => mediator.send(new UnregisteredRequest()));
       },
     );
 
-    Rhum.testCase(
+    it(
       "when no registered async handler, it throws exception",
       () => {
-        Rhum.asserts.assertRejects(() =>
-          mediator.send(new UnregisteredPromiseRequest())
-        );
+        assertRejects(() => mediator.send(new UnregisteredPromiseRequest()));
       },
     );
   });
 
-  Rhum.testSuite("publish()", () => {
-    Rhum.testCase("when notification, it calls correct handlers", async () => {
+  describe("publish()", () => {
+    it("when notification, it calls correct handlers", async () => {
       await mediator.publish(new TestNotification1());
     });
   });
 });
-
-Rhum.run();

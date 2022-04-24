@@ -1,10 +1,17 @@
-import { Rhum } from "https://deno.land/x/rhum@v1.1.12/mod.ts";
 import { Notification } from "./notification.ts";
 import { PublishStrategy } from "./publish-strategy.ts";
 import { PublisherFactory } from "./publisher-factory.ts";
-import { assertLessThan, delayAsync as delay } from "./testing-utils/index.ts";
 import { NotificationHandler } from "./types.ts";
-import { debug } from "./debug-utils.ts";
+import { assertLessThan, delayAsync as delay } from "./testing-utils/index.ts";
+import {
+  assertEquals,
+  assertRejects,
+} from "https://deno.land/std@0.136.0/testing/asserts.ts";
+import {
+  afterEach,
+  describe,
+  it,
+} from "https://deno.land/std@0.136.0/testing/bdd.ts";
 
 class TestNotification extends Notification {
   public readonly id: string = crypto.randomUUID();
@@ -42,10 +49,10 @@ const setupHandlers = (
   };
 };
 
-Rhum.testPlan("PublisherFactory", () => {
-  Rhum.testSuite("create()", () => {
-    Rhum.testSuite("when ParallelNoWait", () => {
-      Rhum.testCase(
+describe("PublisherFactory", () => {
+  describe("create()", () => {
+    describe("when ParallelNoWait", () => {
+      it(
         "publisher.publish() returns immediately",
         async () => {
           const publisher = PublisherFactory.create(
@@ -60,15 +67,15 @@ Rhum.testPlan("PublisherFactory", () => {
 
           publisher.publish(new TestNotification(), handlers);
 
-          Rhum.asserts.assertEquals(result, expectedArray);
+          assertEquals(result, expectedArray);
 
           await publisher.stop();
         },
       );
     });
 
-    Rhum.testSuite("when ParallelWhenAny", () => {
-      Rhum.testCase(
+    describe("when ParallelWhenAny", () => {
+      it(
         "publisher.publish() returns first returned value",
         async () => {
           const publisher = PublisherFactory.create(
@@ -88,13 +95,13 @@ Rhum.testPlan("PublisherFactory", () => {
 
           await publisher.publish(testNotification, handlers);
 
-          Rhum.asserts.assertEquals(result, expectedArray);
+          assertEquals(result, expectedArray);
 
           await publisher.stop();
         },
       );
 
-      Rhum.testCase(
+      it(
         "publisher.publish() returns when all handlers complete and one throws",
         async () => {
           const publisher = PublisherFactory.create(
@@ -112,28 +119,28 @@ Rhum.testPlan("PublisherFactory", () => {
 
           const start = new Date().getTime();
 
-          await Rhum.asserts.assertThrowsAsync(async () => {
+          await assertRejects(async () => {
             await publisher.publish(notification, handlers);
           });
 
           const elapsedTime = new Date().getTime() - start;
 
           assertLessThan(elapsedTime, 300);
-          Rhum.asserts.assertEquals(result, expectedArray);
+          assertEquals(result, expectedArray);
 
           await publisher.stop();
         },
       );
     });
 
-    Rhum.testSuite("when ParallelWhenAll", () => {
+    describe("when ParallelWhenAll", () => {
       const publisher = PublisherFactory.create(
         PublishStrategy.ParallelWhenAll,
       );
 
-      Rhum.afterEach(async () => await publisher.stop());
+      afterEach(async () => await publisher.stop());
 
-      Rhum.testCase(
+      it(
         "publisher.publish() returns when all handlers return",
         async () => {
           const notification = new TestNotification();
@@ -149,11 +156,11 @@ Rhum.testPlan("PublisherFactory", () => {
 
           await publisher.publish(notification, handlers);
 
-          Rhum.asserts.assertEquals(result, expectedArray);
+          assertEquals(result, expectedArray);
         },
       );
 
-      Rhum.testCase(
+      it(
         "publisher.publish() returns when all handlers complete and one throws",
         async () => {
           const notification = new TestNotification();
@@ -170,26 +177,26 @@ Rhum.testPlan("PublisherFactory", () => {
 
           const start = new Date().getTime();
 
-          await Rhum.asserts.assertThrowsAsync(async () => {
+          await assertRejects(async () => {
             await publisher.publish(notification, handlers);
           });
 
           const elapsedTime = new Date().getTime() - start;
 
           assertLessThan(elapsedTime, 300);
-          Rhum.asserts.assertEquals(result, expectedArray);
+          assertEquals(result, expectedArray);
         },
       );
     });
 
-    Rhum.testSuite("when Async", () => {
+    describe("when Async", () => {
       const publisher = PublisherFactory.create(
         PublishStrategy.Async,
       );
 
-      Rhum.afterEach(async () => await publisher.stop());
+      afterEach(async () => await publisher.stop());
 
-      Rhum.testCase(
+      it(
         "publisher.publish() returns when all handlers return",
         async () => {
           const notification = new TestNotification();
@@ -205,11 +212,11 @@ Rhum.testPlan("PublisherFactory", () => {
 
           await publisher.publish(notification, handlers);
 
-          Rhum.asserts.assertEquals(result, expectedArray);
+          assertEquals(result, expectedArray);
         },
       );
 
-      Rhum.testCase(
+      it(
         "publisher.publish() returns when all handlers complete and one throws",
         async () => {
           const notification = new TestNotification();
@@ -226,26 +233,26 @@ Rhum.testPlan("PublisherFactory", () => {
 
           const start = new Date().getTime();
 
-          await Rhum.asserts.assertThrowsAsync(async () => {
+          await assertRejects(async () => {
             await publisher.publish(notification, handlers);
           });
 
           const elapsedTime = new Date().getTime() - start;
 
           assertLessThan(elapsedTime, 300);
-          Rhum.asserts.assertEquals(result, expectedArray);
+          assertEquals(result, expectedArray);
         },
       );
     });
 
-    Rhum.testSuite("when SyncContinueOnException", () => {
+    describe("when SyncContinueOnException", () => {
       const publisher = PublisherFactory.create(
         PublishStrategy.SyncContinueOnException,
       );
 
-      Rhum.afterEach(async () => await publisher.stop());
+      afterEach(async () => await publisher.stop());
 
-      Rhum.testCase(
+      it(
         "publisher.publish() returns when all handlers complete",
         async () => {
           const notification = new TestNotification();
@@ -261,11 +268,11 @@ Rhum.testPlan("PublisherFactory", () => {
 
           await publisher.publish(notification, handlers);
 
-          Rhum.asserts.assertEquals(result, expectedArray);
+          assertEquals(result, expectedArray);
         },
       );
 
-      Rhum.testCase(
+      it(
         "publisher.publish() returns when all handlers complete and one throws",
         async () => {
           const notification = new TestNotification();
@@ -280,23 +287,23 @@ Rhum.testPlan("PublisherFactory", () => {
             { delay: 100, result: 3 },
           ]);
 
-          await Rhum.asserts.assertThrowsAsync(async () => {
+          await assertRejects(async () => {
             await publisher.publish(notification, handlers);
           });
 
-          Rhum.asserts.assertEquals(result, expectedArray);
+          assertEquals(result, expectedArray);
         },
       );
     });
 
-    Rhum.testSuite("when SyncStopOnException", () => {
+    describe("when SyncStopOnException", () => {
       const publisher = PublisherFactory.create(
         PublishStrategy.SyncStopOnException,
       );
 
-      Rhum.afterEach(async () => await publisher.stop());
+      afterEach(async () => await publisher.stop());
 
-      Rhum.testCase(
+      it(
         "publisher.publish() returns when all handlers return",
         async () => {
           const notification = new TestNotification();
@@ -308,15 +315,13 @@ Rhum.testPlan("PublisherFactory", () => {
             { delay: 250, result: 3 },
           ]);
 
-          await Rhum.asserts.assertThrowsAsync(async () => {
+          await assertRejects(async () => {
             await publisher.publish(notification, handlers);
           });
 
-          Rhum.asserts.assertEquals(result, expectedArray);
+          assertEquals(result, expectedArray);
         },
       );
     });
   });
 });
-
-Rhum.run();

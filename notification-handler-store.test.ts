@@ -1,5 +1,13 @@
+import {
+  assertEquals,
+  assertThrows,
+} from "https://deno.land/std@0.136.0/testing/asserts.ts";
+import {
+  beforeEach,
+  describe,
+  it,
+} from "https://deno.land/std@0.136.0/testing/bdd.ts";
 import { Notification, Request } from "./mod.ts";
-import { Rhum } from "https://deno.land/x/rhum@v1.1.12/mod.ts";
 import { createHandler } from "./mod.ts";
 import { NotificationHandler, RequestHandler } from "./types.ts";
 import { NotificationHandlerStore } from "./notification-handler-store.ts";
@@ -18,9 +26,9 @@ class TestNotification3 extends Notification {
   public test2 = "test3";
 }
 
-Rhum.testPlan("NotificationHandlerStore", () => {
-  Rhum.testSuite("createHandler()", () => {
-    Rhum.testSuite("notifications", () => {
+describe("NotificationHandlerStore", () => {
+  describe("createHandler()", () => {
+    describe("notifications", () => {
       // Setup
       class TestNotification extends Notification {
         public test1 = "test";
@@ -29,56 +37,56 @@ Rhum.testPlan("NotificationHandlerStore", () => {
       const notificationHandler: NotificationHandler<TestNotification> =
         () => {};
 
-      Rhum.testCase("returns correct definition type", () => {
+      it("returns correct definition type", () => {
         const handlerDefinition = createHandler(
           TestNotification,
           notificationHandler,
         );
 
-        Rhum.asserts.assertEquals(
+        assertEquals(
           TestNotification,
           handlerDefinition.type,
         );
       });
 
-      Rhum.testCase("returns correct definition handle", () => {
+      it("returns correct definition handle", () => {
         const handlerDefinition = createHandler(
           TestNotification,
           notificationHandler,
         );
 
-        Rhum.asserts.assertEquals(
+        assertEquals(
           notificationHandler,
           handlerDefinition.handle,
         );
       });
     });
 
-    Rhum.testSuite("requests", () => {
+    describe("requests", () => {
       // Setup
       class TestRequest extends Request {}
 
       const requestHandler: RequestHandler<TestRequest> = () => {};
 
-      Rhum.testCase("returns correct definition type", () => {
+      it("returns correct definition type", () => {
         const handlerDefinition = createHandler<TestRequest>(
           TestRequest,
           requestHandler,
         );
 
-        Rhum.asserts.assertEquals(
+        assertEquals(
           TestRequest,
           handlerDefinition.type,
         );
       });
 
-      Rhum.testCase("returns correct definition handle", () => {
+      it("returns correct definition handle", () => {
         const handlerDefinition = createHandler(
           TestRequest,
           requestHandler,
         );
 
-        Rhum.asserts.assertEquals(
+        assertEquals(
           requestHandler,
           handlerDefinition.handle,
         );
@@ -86,34 +94,30 @@ Rhum.testPlan("NotificationHandlerStore", () => {
     });
   });
 
-  Rhum.testSuite("remove()", () => {
+  describe("remove()", () => {
     let store: NotificationHandlerStore;
-    Rhum.beforeEach(() => {
+    beforeEach(() => {
       store = new NotificationHandlerStore();
     });
 
-    Rhum.testCase("can remove a NotificationHandler", () => {
+    it("can remove a NotificationHandler", () => {
       const handler: Handler<TestNotification1> = () => {};
       const notification = new TestNotification1();
 
       store.add(TestNotification1, handler);
-      Rhum.asserts.assertEquals(store.get(notification), [handler]);
+      assertEquals(store.get(notification), [handler]);
 
       store.remove(TestNotification1, handler);
-      Rhum.asserts.assertEquals(store.get(notification), []);
+      assertEquals(store.get(notification), []);
     });
 
-    Rhum.testCase(
+    it(
       "removing a RequestHandler that is not in store, throws exception",
       () => {
         const handler: Handler<TestNotification1> = () => {};
 
-        Rhum.asserts.assertThrows(() =>
-          store.remove(TestNotification1, handler)
-        );
+        assertThrows(() => store.remove(TestNotification1, handler));
       },
     );
   });
 });
-
-Rhum.run();

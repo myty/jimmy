@@ -1,7 +1,7 @@
 export function delayAsync(ms: number, signal?: AbortSignal) {
-  return new Promise<void>((resolve) => {
-    let timeoutId: number;
+  let timeoutId: number;
 
+  return new Promise<void>((resolve) => {
     const resolveDelay = () => {
       signal?.removeEventListener("abort", resolveDelay);
       clearTimeout(timeoutId);
@@ -15,6 +15,7 @@ export function delayAsync(ms: number, signal?: AbortSignal) {
     }
 
     signal?.addEventListener("abort", resolveDelay);
+
     timeoutId = setTimeout(resolveDelay, ms);
   });
 }
