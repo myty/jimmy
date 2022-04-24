@@ -105,10 +105,10 @@ describe("NotificationHandlerStore", () => {
       const notification = new TestNotification1();
 
       store.add(TestNotification1, handler);
-      assertEquals(store.get(notification), [handler]);
+      assertEquals(store.getMany(notification), [handler]);
 
       store.remove(TestNotification1, handler);
-      assertEquals(store.get(notification), []);
+      assertEquals(store.getMany(notification), []);
     });
 
     it(

@@ -78,7 +78,7 @@ describe("handler", () => {
     });
 
     it("returns correct NotificationHandlers", () => {
-      const handlers = store.get(new TestNotification1());
+      const handlers = store.getMany(new TestNotification1());
 
       assertEquals(handlers.length, 2);
       assertEquals(handlers, [
@@ -86,7 +86,7 @@ describe("handler", () => {
         notificationHandler2,
       ]);
 
-      const handlers2 = store.get(new TestNotification2());
+      const handlers2 = store.getMany(new TestNotification2());
 
       assertEquals(handlers2.length, 1);
       assertEquals(handlers2, [
@@ -95,7 +95,7 @@ describe("handler", () => {
     });
 
     it("when no register handlers, it returns empty array", () => {
-      const handlers = store.get(new TestNotification3());
+      const handlers = store.getMany(new TestNotification3());
 
       assertEquals(handlers.length, 0);
       assertEquals(handlers, []);
