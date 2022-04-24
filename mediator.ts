@@ -6,7 +6,10 @@ import { NotificationHandlerStore } from "./notification-handler-store.ts";
 import {
   Constructor,
   Handler,
+  HandlerDefinition,
   NotificationHandler,
+  RequestHandler,
+  RequestOrNotification,
   Response,
 } from "./types.ts";
 import { IPublisher, PublisherFactory } from "./publisher-factory.ts";
@@ -17,47 +20,62 @@ import { TypeGuards } from "./type-guards.ts";
  */
 interface MediatorConfig {
   publishStratey?: PublishStrategy;
+  handlerDefinitions?: HandlerDefinition[];
 }
 
 /**
  * Main mediator class that handles requests and notifications
  */
 export class Mediator {
-  private _notificationHandlers: NotificationHandlerStore;
-  private _requestHandlers: RequestHandlerStore;
-  private _publishStrategy: IPublisher;
+  private readonly _notificationHandlers: NotificationHandlerStore;
+  private readonly _requestHandlers: RequestHandlerStore;
+  private readonly _publishStrategy: IPublisher;
 
   constructor(config?: MediatorConfig) {
-    this._publishStrategy = PublisherFactory.create(
-      config?.publishStratey ??
-        PublishStrategy.SyncContinueOnException,
-    );
     this._notificationHandlers = new NotificationHandlerStore();
     this._requestHandlers = new RequestHandlerStore();
 
     this.handle = this.handle.bind(this);
     this.publish = this.publish.bind(this);
     this.send = this.send.bind(this);
+
+    this._publishStrategy = PublisherFactory.create(
+      config?.publishStratey ??
+        PublishStrategy.SyncContinueOnException,
+    );
+
+    if (config?.handlerDefinitions != null) {
+      config.handlerDefinitions.forEach(({ type, handle }) => {
+        this.handle<RequestOrNotification>(type, handle);
+      });
+    }
   }
 
   /**
    * Register a request or notification handler
    */
-  public handle<TRequest extends (Request | Notification)>(
-    constructor: Constructor<TRequest>,
-    handler: Handler<TRequest>,
+  public handle<T extends RequestOrNotification>(
+    constructor: Constructor<T>,
+    handler: Handler<T>,
   ): void {
-    if (TypeGuards.isRequestConstructor(constructor)) {
-      this._requestHandlers.add(constructor, handler);
-      return;
+    if (
+      TypeGuards.isRequestConstructor(constructor) &&
+      TypeGuards.isRequestHandler(constructor, handler)
+    ) {
+      return this._requestHandlers.add(
+        constructor,
+        handler,
+      );
     }
 
-    if (TypeGuards.isNotificationConstructor(constructor)) {
-      this._notificationHandlers.add(
+    if (
+      TypeGuards.isNotificationConstructor(constructor) &&
+      TypeGuards.isNotificationHandler(constructor, handler)
+    ) {
+      return this._notificationHandlers.add(
         constructor,
-        handler as NotificationHandler,
+        handler,
       );
-      return;
     }
 
     throw new Error(`Invalid request or notification`);
@@ -66,19 +84,28 @@ export class Mediator {
   /**
    * Unregister a request or notification handler
    */
-  public unhandle<TRequest extends (Request | Notification)>(
-    constructor: Constructor<TRequest>,
-    handler: Handler<TRequest>,
+  public unhandle<T extends RequestOrNotification>(
+    constructor: Constructor<T>,
+    handler: Handler<T>,
   ): void {
-    if (TypeGuards.isRequestConstructor(constructor)) {
-      this._requestHandlers.remove(constructor, handler);
+    if (
+      TypeGuards.isRequestConstructor(constructor) &&
+      TypeGuards.isRequestHandler(constructor, handler)
+    ) {
+      this._requestHandlers.remove(
+        constructor,
+        handler,
+      );
       return;
     }
 
-    if (TypeGuards.isNotificationConstructor(constructor)) {
+    if (
+      TypeGuards.isNotificationConstructor(constructor) &&
+      TypeGuards.isNotificationHandler(constructor, handler)
+    ) {
       this._notificationHandlers.remove(
         constructor,
-        handler as NotificationHandler,
+        handler,
       );
       return;
     }
@@ -105,21 +132,25 @@ export class Mediator {
 
     await publisher.publish(
       notification,
-      this._notificationHandlers.get(notification),
+      this._notificationHandlers.getMany(notification),
     );
   }
 
   /**
    * Send a request
    */
-  public send<TRequest extends Request>(
+  public send<TRequest extends Request, TResponse extends Response<TRequest>>(
     request: TRequest,
-  ): Response<TRequest> {
+  ): TResponse {
     if (TypeGuards.isRequest<TRequest>(request)) {
-      const handler = this._requestHandlers.get<TRequest>(request);
-      return handler(request);
+      const handler = this._requestHandlers.get(request);
+      return request.getResponse(handler);
     }
 
     throw new Error(`Invalid request`);
+  }
+
+  public async stop() {
+    await this._publishStrategy.stop();
   }
 }

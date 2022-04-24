@@ -1,304 +1,327 @@
-import { AssertionError } from "https://deno.land/std@0.116.0/testing/asserts.ts";
-import { Rhum } from "https://deno.land/x/rhum@v1.1.12/mod.ts";
 import { Notification } from "./notification.ts";
 import { PublishStrategy } from "./publish-strategy.ts";
 import { PublisherFactory } from "./publisher-factory.ts";
 import { NotificationHandler } from "./types.ts";
+import { assertLessThan, delayAsync as delay } from "./testing-utils/index.ts";
+import {
+  assertEquals,
+  assertRejects,
+} from "https://deno.land/std@0.136.0/testing/asserts.ts";
+import {
+  afterEach,
+  describe,
+  it,
+} from "https://deno.land/std@0.136.0/testing/bdd.ts";
+
+class TestNotification extends Notification {
+  public readonly id: string = crypto.randomUUID();
+}
+
+interface TestResult {
+  value: number;
+  notification: TestNotification;
+}
 
 const setupHandlers = (
   handlerConfigs: { delay: number; result: number | Error }[],
 ) => {
-  const timeoutIds: number[] = [];
-  const result: number[] = [];
-  const handlers: Array<NotificationHandler> = [];
+  const result: TestResult[] = [];
+  const handlers = handlerConfigs.map((
+    config,
+  ): NotificationHandler<TestNotification> =>
+    async (notification, onAbort) => {
+      const abortController = new AbortController();
+      await delay(config.delay, abortController.signal);
 
-  const clear = () => {
-    for (const timeoutId of timeoutIds) {
-      clearTimeout(timeoutId);
+      onAbort(() => abortController.abort());
+
+      if (config.result instanceof Error) {
+        throw config.result;
+      }
+
+      result.push({ value: config.result, notification });
     }
-  };
-
-  for (const config of handlerConfigs) {
-    handlers.push(() => {
-      const promise = new Promise<void>((resolve, reject) => {
-        timeoutIds.push(setTimeout(() => {
-          if (config.result instanceof Error) {
-            reject(config.result);
-            return;
-          }
-
-          result.push(config.result);
-          resolve();
-        }, config.delay));
-      });
-      return promise;
-    });
-  }
+  );
 
   return {
     handlers,
-    clear,
     result,
   };
 };
 
-function assertLessThan(actual: number, expected: number, msg?: string): void {
-  if (actual >= expected) {
-    msg = msg ?? `"${actual}" (actual) expected to be less than "${expected}"`;
-    throw new AssertionError(msg);
-  }
-}
-
-class TestNotification extends Notification {}
-
-Rhum.testPlan("PublisherFactory", () => {
-  Rhum.testSuite("create()", () => {
-    Rhum.testSuite("when ParallelNoWait", () => {
-      const publisher = PublisherFactory.create(
-        PublishStrategy.ParallelNoWait,
-      );
-
-      Rhum.testCase(
+describe("PublisherFactory", () => {
+  describe("create()", () => {
+    describe("when ParallelNoWait", () => {
+      it(
         "publisher.publish() returns immediately",
-        () => {
-          const expectedArray: number[] = [];
+        async () => {
+          const publisher = PublisherFactory.create(
+            PublishStrategy.ParallelNoWait,
+          );
+          const expectedArray: TestResult[] = [];
 
-          const { handlers, clear, result } = setupHandlers([
+          const { handlers, result } = setupHandlers([
             { delay: 150, result: 1 },
             { delay: 50, result: 3 },
           ]);
 
           publisher.publish(new TestNotification(), handlers);
 
-          Rhum.asserts.assertEquals(result, expectedArray);
+          assertEquals(result, expectedArray);
 
-          clear();
+          await publisher.stop();
         },
       );
     });
 
-    Rhum.testSuite("when ParallelWhenAny", () => {
-      const publisher = PublisherFactory.create(
-        PublishStrategy.ParallelWhenAny,
-      );
-
-      Rhum.testCase(
+    describe("when ParallelWhenAny", () => {
+      it(
         "publisher.publish() returns first returned value",
         async () => {
-          const expectedArray: number[] = [3];
+          const publisher = PublisherFactory.create(
+            PublishStrategy.ParallelWhenAny,
+          );
 
-          const { handlers, clear, result } = setupHandlers([
+          const testNotification = new TestNotification();
+          const expectedArray: TestResult[] = [{
+            value: 3,
+            notification: testNotification,
+          }];
+
+          const { handlers, result } = setupHandlers([
             { delay: 150, result: 1 },
             { delay: 50, result: 3 },
           ]);
 
-          await publisher.publish(new TestNotification(), handlers);
+          await publisher.publish(testNotification, handlers);
 
-          Rhum.asserts.assertEquals(result, expectedArray);
+          assertEquals(result, expectedArray);
 
-          clear();
+          await publisher.stop();
         },
       );
 
-      Rhum.testCase(
+      it(
         "publisher.publish() returns when all handlers complete and one throws",
         async () => {
-          const expectedArray: number[] = [];
+          const publisher = PublisherFactory.create(
+            PublishStrategy.ParallelWhenAny,
+          );
 
-          const { handlers, clear, result } = setupHandlers([
+          const notification = new TestNotification();
+          const expectedArray: TestResult[] = [];
+
+          const { handlers, result } = setupHandlers([
             { delay: 150, result: 1 },
-            { delay: 50, result: new Error("Test Error") },
+            { delay: 50, result: new Error("ParallelWhenAny Error") },
             { delay: 100, result: 3 },
           ]);
 
           const start = new Date().getTime();
 
-          await Rhum.asserts.assertThrowsAsync(async () => {
-            await publisher.publish(new TestNotification(), handlers);
+          await assertRejects(async () => {
+            await publisher.publish(notification, handlers);
           });
 
           const elapsedTime = new Date().getTime() - start;
 
           assertLessThan(elapsedTime, 300);
-          Rhum.asserts.assertEquals(result, expectedArray);
+          assertEquals(result, expectedArray);
 
-          clear();
+          await publisher.stop();
         },
       );
     });
 
-    Rhum.testSuite("when ParallelWhenAll", () => {
+    describe("when ParallelWhenAll", () => {
       const publisher = PublisherFactory.create(
         PublishStrategy.ParallelWhenAll,
       );
 
-      Rhum.testCase(
+      afterEach(async () => await publisher.stop());
+
+      it(
         "publisher.publish() returns when all handlers return",
         async () => {
-          const expectedArray: number[] = [3, 1];
+          const notification = new TestNotification();
+          const expectedArray: TestResult[] = [
+            { value: 3, notification },
+            { value: 1, notification },
+          ];
 
-          const { handlers, clear, result } = setupHandlers([
+          const { handlers, result } = setupHandlers([
             { delay: 150, result: 1 },
             { delay: 50, result: 3 },
           ]);
 
-          await publisher.publish(new TestNotification(), handlers);
+          await publisher.publish(notification, handlers);
 
-          Rhum.asserts.assertEquals(result, expectedArray);
-
-          clear();
+          assertEquals(result, expectedArray);
         },
       );
 
-      Rhum.testCase(
+      it(
         "publisher.publish() returns when all handlers complete and one throws",
         async () => {
-          const expectedArray: number[] = [3, 1];
+          const notification = new TestNotification();
+          const expectedArray: TestResult[] = [
+            { value: 3, notification },
+            { value: 1, notification },
+          ];
 
-          const { handlers, clear, result } = setupHandlers([
+          const { handlers, result } = setupHandlers([
             { delay: 150, result: 1 },
-            { delay: 50, result: new Error("Test Error") },
+            { delay: 50, result: new Error("ParallelWhenAll Error") },
             { delay: 100, result: 3 },
           ]);
 
           const start = new Date().getTime();
 
-          await Rhum.asserts.assertThrowsAsync(async () => {
-            await publisher.publish(new TestNotification(), handlers);
+          await assertRejects(async () => {
+            await publisher.publish(notification, handlers);
           });
 
           const elapsedTime = new Date().getTime() - start;
 
           assertLessThan(elapsedTime, 300);
-          Rhum.asserts.assertEquals(result, expectedArray);
-
-          clear();
+          assertEquals(result, expectedArray);
         },
       );
     });
 
-    Rhum.testSuite("when Async", () => {
+    describe("when Async", () => {
       const publisher = PublisherFactory.create(
         PublishStrategy.Async,
       );
 
-      Rhum.testCase(
+      afterEach(async () => await publisher.stop());
+
+      it(
         "publisher.publish() returns when all handlers return",
         async () => {
-          const expectedArray: number[] = [3, 1];
+          const notification = new TestNotification();
+          const expectedArray: TestResult[] = [
+            { value: 3, notification },
+            { value: 1, notification },
+          ];
 
-          const { handlers, clear, result } = setupHandlers([
+          const { handlers, result } = setupHandlers([
             { delay: 150, result: 1 },
             { delay: 50, result: 3 },
           ]);
 
-          await publisher.publish(new TestNotification(), handlers);
+          await publisher.publish(notification, handlers);
 
-          Rhum.asserts.assertEquals(result, expectedArray);
-
-          clear();
+          assertEquals(result, expectedArray);
         },
       );
 
-      Rhum.testCase(
+      it(
         "publisher.publish() returns when all handlers complete and one throws",
         async () => {
-          const expectedArray: number[] = [3, 1];
+          const notification = new TestNotification();
+          const expectedArray: TestResult[] = [
+            { value: 3, notification },
+            { value: 1, notification },
+          ];
 
-          const { handlers, clear, result } = setupHandlers([
+          const { handlers, result } = setupHandlers([
             { delay: 150, result: 1 },
-            { delay: 50, result: new Error("Test Error") },
+            { delay: 50, result: new Error("Async Error") },
             { delay: 100, result: 3 },
           ]);
 
           const start = new Date().getTime();
 
-          await Rhum.asserts.assertThrowsAsync(async () => {
-            await publisher.publish(new TestNotification(), handlers);
+          await assertRejects(async () => {
+            await publisher.publish(notification, handlers);
           });
 
           const elapsedTime = new Date().getTime() - start;
 
           assertLessThan(elapsedTime, 300);
-          Rhum.asserts.assertEquals(result, expectedArray);
-
-          clear();
+          assertEquals(result, expectedArray);
         },
       );
     });
 
-    Rhum.testSuite("when SyncContinueOnException", () => {
+    describe("when SyncContinueOnException", () => {
       const publisher = PublisherFactory.create(
         PublishStrategy.SyncContinueOnException,
       );
 
-      Rhum.testCase(
+      afterEach(async () => await publisher.stop());
+
+      it(
         "publisher.publish() returns when all handlers complete",
         async () => {
-          const expectedArray: number[] = [1, 3];
+          const notification = new TestNotification();
+          const expectedArray: TestResult[] = [
+            { value: 1, notification },
+            { value: 3, notification },
+          ];
 
-          const { handlers, clear, result } = setupHandlers([
+          const { handlers, result } = setupHandlers([
             { delay: 150, result: 1 },
             { delay: 50, result: 3 },
           ]);
 
-          await publisher.publish(new TestNotification(), handlers);
+          await publisher.publish(notification, handlers);
 
-          Rhum.asserts.assertEquals(result, expectedArray);
-
-          clear();
+          assertEquals(result, expectedArray);
         },
       );
 
-      Rhum.testCase(
+      it(
         "publisher.publish() returns when all handlers complete and one throws",
         async () => {
-          const expectedArray: number[] = [1, 3];
+          const notification = new TestNotification();
+          const expectedArray: TestResult[] = [{ value: 1, notification }, {
+            value: 3,
+            notification,
+          }];
 
-          const { handlers, clear, result } = setupHandlers([
+          const { handlers, result } = setupHandlers([
             { delay: 150, result: 1 },
-            { delay: 50, result: new Error("Test Error") },
+            { delay: 50, result: new Error("SyncContinueOnException Error") },
             { delay: 100, result: 3 },
           ]);
 
-          await Rhum.asserts.assertThrowsAsync(async () => {
-            await publisher.publish(new TestNotification(), handlers);
+          await assertRejects(async () => {
+            await publisher.publish(notification, handlers);
           });
 
-          Rhum.asserts.assertEquals(result, expectedArray);
-
-          clear();
+          assertEquals(result, expectedArray);
         },
       );
     });
 
-    Rhum.testSuite("when SyncStopOnException", () => {
+    describe("when SyncStopOnException", () => {
       const publisher = PublisherFactory.create(
         PublishStrategy.SyncStopOnException,
       );
 
-      Rhum.testCase(
+      afterEach(async () => await publisher.stop());
+
+      it(
         "publisher.publish() returns when all handlers return",
         async () => {
-          const expectedArray: number[] = [1];
+          const notification = new TestNotification();
+          const expectedArray: TestResult[] = [{ value: 1, notification }];
 
-          const { handlers, clear, result } = setupHandlers([
+          const { handlers, result } = setupHandlers([
             { delay: 150, result: 1 },
-            { delay: 50, result: new Error("Test Error") },
+            { delay: 50, result: new Error("SyncStopOnException Error") },
             { delay: 250, result: 3 },
           ]);
 
-          await Rhum.asserts.assertThrowsAsync(async () => {
-            await publisher.publish(new TestNotification(), handlers);
+          await assertRejects(async () => {
+            await publisher.publish(notification, handlers);
           });
 
-          Rhum.asserts.assertEquals(result, expectedArray);
-
-          clear();
+          assertEquals(result, expectedArray);
         },
       );
     });
   });
 });
-
-Rhum.run();

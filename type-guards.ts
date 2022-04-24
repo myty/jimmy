@@ -1,40 +1,94 @@
+// deno-lint-ignore-file no-explicit-any ban-types
 import { Notification } from "./notification.ts";
 import { Request } from "./request.ts";
-import { NotificationConstructor, RequestConstructor } from "./types.ts";
+import {
+  Constructor,
+  Handler,
+  NotificationHandler,
+  NotificationType,
+  RequestHandler,
+  RequestOrNotification,
+  RequestType,
+} from "./types.ts";
 
 function isNotification<TNotification extends Notification>(
   request: TNotification,
-): request is TNotification & { constructor: NotificationConstructor } {
+): request is TNotification & {
+  constructor: NotificationType<Notification>;
+} {
   return isNotificationConstructor(request.constructor);
 }
 
-function isNotificationConstructor<TNotification extends Notification>(
-  constructor: Partial<typeof Notification>,
-): constructor is NotificationConstructor<TNotification> {
+function isNotificationConstructor(
+  constructor: Function,
+): constructor is Constructor<Notification> {
+  const { notificationTypeId } = constructor as NotificationType<Notification>;
+
   return (
-    constructor.notificationTypeId != null &&
-    typeof constructor.notificationTypeId === "symbol"
+    notificationTypeId != null &&
+    typeof notificationTypeId === "symbol"
+  );
+}
+
+function isNotificationType(
+  constructor: Constructor,
+): constructor is NotificationType {
+  const { notificationTypeId } = constructor as NotificationType;
+
+  return (
+    notificationTypeId != null &&
+    typeof notificationTypeId === "symbol"
+  );
+}
+
+function isRequestType(
+  constructor: Constructor,
+): constructor is RequestType {
+  const { requestTypeId } = constructor as RequestType;
+
+  return (
+    requestTypeId != null &&
+    typeof requestTypeId === "symbol"
   );
 }
 
 function isRequest<TRequest extends Request>(
-  request: TRequest,
-): request is TRequest & { constructor: RequestConstructor<TRequest> } {
+  request: RequestOrNotification,
+): request is TRequest & { constructor: RequestType<TRequest> } {
   return isRequestConstructor(request.constructor);
 }
 
 function isRequestConstructor(
-  constructor: Partial<typeof Request>,
-): constructor is RequestConstructor {
+  constructor: any,
+): constructor is Constructor<Request> {
   return (
     constructor.requestTypeId != null &&
     typeof constructor.requestTypeId === "symbol"
   );
 }
 
+function isRequestHandler<T extends RequestOrNotification>(
+  constructor: Constructor<T>,
+  handler: Handler<T>,
+): handler is RequestHandler<T> {
+  return isRequestConstructor(constructor) && typeof handler === "function";
+}
+
+function isNotificationHandler<T extends RequestOrNotification>(
+  constructor: Constructor<T>,
+  handler: Handler<T>,
+): handler is NotificationHandler {
+  return isNotificationConstructor(constructor) &&
+    typeof handler === "function";
+}
+
 export const TypeGuards = {
-  isRequestConstructor,
   isRequest,
+  isRequestConstructor,
+  isRequestHandler,
+  isRequestType,
   isNotification,
   isNotificationConstructor,
+  isNotificationHandler,
+  isNotificationType,
 };

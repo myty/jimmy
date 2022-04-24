@@ -1,5 +1,15 @@
-import { Notification } from "./notification.ts";
-import { Rhum } from "https://deno.land/x/rhum@v1.1.12/mod.ts";
+import {
+  assertEquals,
+  assertThrows,
+} from "https://deno.land/std@0.136.0/testing/asserts.ts";
+import {
+  beforeEach,
+  describe,
+  it,
+} from "https://deno.land/std@0.136.0/testing/bdd.ts";
+import { Notification, Request } from "./mod.ts";
+import { createHandler } from "./mod.ts";
+import { NotificationHandler, RequestHandler } from "./types.ts";
 import { NotificationHandlerStore } from "./notification-handler-store.ts";
 import { Handler } from "./types.ts";
 
@@ -8,124 +18,188 @@ class TestNotification1 extends Notification {
   public test1 = "test1";
 }
 
-class TestNotification2 extends Notification {
-  public test2 = "test2";
-}
-
 class TestNotification3 extends Notification {
   public test2 = "test3";
 }
 
-Rhum.testPlan("NotificationHandlerStore", () => {
-  Rhum.testSuite("constructor()", () => {
-    const store = new NotificationHandlerStore();
+describe("NotificationHandlerStore", () => {
+  describe("createHandler()", () => {
+    describe("notifications", () => {
+      // Setup
+      class TestNotification extends Notification {
+        public test1 = "test";
+      }
 
-    Rhum.testCase("initializes", () => {
-      Rhum.asserts.assertEquals(
-        store instanceof NotificationHandlerStore,
-        true,
-      );
-    });
-  });
+      const notificationHandler: NotificationHandler<TestNotification> =
+        () => {};
 
-  Rhum.testSuite("add()", () => {
-    let store: NotificationHandlerStore;
-    Rhum.beforeEach(() => {
-      store = new NotificationHandlerStore();
-    });
-
-    Rhum.testCase("can add NotificationHandlers", () => {
-      store.add(TestNotification1, (notification) => {
-        notification.test1;
-      });
-      store.add(TestNotification2, (notification) => {
-        notification.test2;
-      });
-    });
-
-    Rhum.testCase("can add multiple NotificationHandlers for same type", () => {
-      store.add(TestNotification1, (notification) => {
-        notification.test1;
-      });
-      store.add(TestNotification1, (notification) => {
-        notification.test1;
-      });
-    });
-  });
-
-  Rhum.testSuite("get()", () => {
-    let store: NotificationHandlerStore;
-
-    const notificationHandler1 = (notification: TestNotification1) => {
-      notification.test1;
-    };
-    const notificationHandler2 = (notification: TestNotification1) => {
-      notification.test1;
-    };
-    const notificationHandler3 = (notification: TestNotification2) => {
-      notification.test2;
-    };
-
-    Rhum.beforeEach(() => {
-      store = new NotificationHandlerStore();
-      store.add(TestNotification1, notificationHandler1);
-      store.add(TestNotification1, notificationHandler2);
-      store.add(TestNotification2, notificationHandler3);
-    });
-
-    Rhum.testCase("returns correct NotificationHandlers", () => {
-      const handlers = store.get(new TestNotification1());
-
-      Rhum.asserts.assertEquals(handlers.length, 2);
-      Rhum.asserts.assertEquals(handlers, [
-        notificationHandler1,
-        notificationHandler2,
-      ]);
-
-      const handlers2 = store.get(new TestNotification2());
-
-      Rhum.asserts.assertEquals(handlers2.length, 1);
-      Rhum.asserts.assertEquals(handlers2, [
-        notificationHandler3,
-      ]);
-    });
-
-    Rhum.testCase("when no register handlers, it returns empty array", () => {
-      const handlers = store.get(new TestNotification3());
-
-      Rhum.asserts.assertEquals(handlers.length, 0);
-      Rhum.asserts.assertEquals(handlers, []);
-    });
-  });
-
-  Rhum.testSuite("remove()", () => {
-    let store: NotificationHandlerStore;
-    Rhum.beforeEach(() => {
-      store = new NotificationHandlerStore();
-    });
-
-    Rhum.testCase("can remove a NotificationHandler", () => {
-      const handler: Handler<TestNotification1> = () => {};
-      const notification = new TestNotification1();
-
-      store.add(TestNotification1, handler);
-      Rhum.asserts.assertEquals(store.get(notification), [handler]);
-
-      store.remove(TestNotification1, handler);
-      Rhum.asserts.assertEquals(store.get(notification), []);
-    });
-
-    Rhum.testCase(
-      "removing a RequestHandler that is not in store, throws exception",
-      () => {
-        const handler: Handler<TestNotification1> = () => {};
-
-        Rhum.asserts.assertThrows(() =>
-          store.remove(TestNotification1, handler)
+      it("returns correct definition type", () => {
+        const handlerDefinition = createHandler(
+          TestNotification,
+          notificationHandler,
         );
-      },
-    );
+
+        assertEquals(
+          TestNotification,
+          handlerDefinition.type,
+        );
+      });
+
+      it("returns correct definition handle", () => {
+        const handlerDefinition = createHandler(
+          TestNotification,
+          notificationHandler,
+        );
+
+        assertEquals(
+          notificationHandler,
+          handlerDefinition.handle,
+        );
+      });
+    });
+
+    describe("requests", () => {
+      // Setup
+      class TestRequest extends Request {}
+
+      const requestHandler: RequestHandler<TestRequest> = () => {};
+
+      it("returns correct definition type", () => {
+        const handlerDefinition = createHandler<TestRequest>(
+          TestRequest,
+          requestHandler,
+        );
+
+        assertEquals(
+          TestRequest,
+          handlerDefinition.type,
+        );
+      });
+
+      it("returns correct definition handle", () => {
+        const handlerDefinition = createHandler(
+          TestRequest,
+          requestHandler,
+        );
+
+        assertEquals(
+          requestHandler,
+          handlerDefinition.handle,
+        );
+      });
+    });
+  });
+
+  describe("add()", () => {
+    // Setup
+    const notificationHandlerStore = new NotificationHandlerStore();
+
+    describe("when constructor is not a notification", () => {
+      it("throws", () => {
+        class NotNotification {}
+
+        assertThrows(
+          () =>
+            notificationHandlerStore.add(
+              NotNotification,
+              () => {},
+            ),
+          Error,
+          "Not a valid notification type",
+        );
+      });
+    });
+
+    describe("when adding notification handler", () => {
+      it("it is successfule", () => {
+        const notificationHandler: NotificationHandler<TestNotification3> =
+          () => {};
+
+        notificationHandlerStore.add(
+          TestNotification3,
+          notificationHandler,
+        );
+
+        const foundHandlers = notificationHandlerStore.getMany(
+          new TestNotification3(),
+        );
+
+        assertEquals(
+          [notificationHandler],
+          foundHandlers,
+        );
+      });
+    });
   });
 });
 
-Rhum.run();
+describe("get()", () => {
+  let store: NotificationHandlerStore;
+  beforeEach(() => {
+    store = new NotificationHandlerStore();
+  });
+
+  it("throws", () => {
+    assertThrows(() => {
+      store.get(new TestNotification1());
+    });
+  });
+});
+
+describe("getMany()", () => {
+  let store: NotificationHandlerStore;
+  beforeEach(() => {
+    store = new NotificationHandlerStore();
+  });
+
+  describe("when notification is not notificaton type", () => {
+    it("returns empty array", () => {
+      class NotNotification {}
+
+      assertEquals(store.getMany(new NotNotification()), []);
+    });
+  });
+});
+
+describe("remove()", () => {
+  let store: NotificationHandlerStore;
+  beforeEach(() => {
+    store = new NotificationHandlerStore();
+  });
+
+  it("can remove a NotificationHandler", () => {
+    const handler: Handler<TestNotification1> = () => {};
+    const notification = new TestNotification1();
+
+    store.add(TestNotification1, handler);
+    assertEquals(store.getMany(notification), [handler]);
+
+    store.remove(TestNotification1, handler);
+    assertEquals(store.getMany(notification), []);
+  });
+
+  it(
+    "removing a RequestHandler that is not in store, throws exception",
+    () => {
+      const handler: Handler<TestNotification1> = () => {};
+
+      assertThrows(() => store.remove(TestNotification1, handler));
+    },
+  );
+
+  describe("when constructor is not a notification", () => {
+    it("throws", () => {
+      class NotNotification {}
+
+      assertThrows(
+        () =>
+          store.remove(
+            NotNotification,
+            () => {},
+          ),
+        Error,
+        "Not a valid notification type",
+      );
+    });
+  });
+});
