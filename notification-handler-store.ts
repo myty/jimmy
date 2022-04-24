@@ -17,7 +17,7 @@ export class NotificationHandlerStore implements HandlerStore<Notification> {
   ) {
     if (
       !(TypeGuards.isNotificationType(constructor) &&
-        TypeGuards.isNotificationHandler(handler))
+        TypeGuards.isNotificationHandler(constructor, handler))
     ) {
       throw new Error(`Not a valid notification type`);
     }
@@ -54,7 +54,7 @@ export class NotificationHandlerStore implements HandlerStore<Notification> {
   ) {
     if (
       !(TypeGuards.isNotificationType(constructor) &&
-        TypeGuards.isNotificationHandler(handler))
+        TypeGuards.isNotificationHandler(constructor, handler))
     ) {
       throw new Error(`Not a valid notification type`);
     }

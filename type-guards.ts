@@ -68,15 +68,18 @@ function isRequestConstructor(
 }
 
 function isRequestHandler<T extends RequestOrNotification>(
+  constructor: Constructor<T>,
   handler: Handler<T>,
 ): handler is RequestHandler<T> {
-  return true;
+  return isRequestConstructor(constructor) && typeof handler === "function";
 }
 
 function isNotificationHandler<T extends RequestOrNotification>(
+  constructor: Constructor<T>,
   handler: Handler<T>,
 ): handler is NotificationHandler {
-  return true;
+  return isNotificationConstructor(constructor) &&
+    typeof handler === "function";
 }
 
 export const TypeGuards = {

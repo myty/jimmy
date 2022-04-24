@@ -25,7 +25,7 @@ export class RequestHandlerStore implements HandlerStore<Request> {
   ) {
     if (
       !(TypeGuards.isRequestType(constructor) &&
-        TypeGuards.isRequestHandler(handler))
+        TypeGuards.isRequestHandler(constructor, handler))
     ) {
       throw new Error(`Not a valid request type`);
     }
@@ -73,20 +73,15 @@ export class RequestHandlerStore implements HandlerStore<Request> {
   ): void {
     if (
       !(TypeGuards.isRequestType(constructor) &&
-        TypeGuards.isRequestHandler(handler))
+        TypeGuards.isRequestHandler(constructor, handler))
     ) {
       throw new Error(`Not a valid request type`);
     }
 
     const { name, requestTypeId } = constructor;
-    const foundHandler = this._handlers.get(requestTypeId);
-
-    if (foundHandler !== handler) {
-      throw new Error(`No handler found for request, ${name}`);
-    }
 
     if (!this._handlers.delete(requestTypeId)) {
-      throw new Error(`Could not remove handler for request, ${name}`);
+      throw new Error(`No handler found for request, ${name}`);
     }
   }
 }

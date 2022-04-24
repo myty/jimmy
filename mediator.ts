@@ -60,7 +60,7 @@ export class Mediator {
   ): void {
     if (
       TypeGuards.isRequestConstructor(constructor) &&
-      TypeGuards.isRequestHandler(handler)
+      TypeGuards.isRequestHandler(constructor, handler)
     ) {
       return this._requestHandlers.add(
         constructor,
@@ -70,7 +70,7 @@ export class Mediator {
 
     if (
       TypeGuards.isNotificationConstructor(constructor) &&
-      TypeGuards.isNotificationHandler(handler)
+      TypeGuards.isNotificationHandler(constructor, handler)
     ) {
       return this._notificationHandlers.add(
         constructor,
@@ -90,7 +90,7 @@ export class Mediator {
   ): void {
     if (
       TypeGuards.isRequestConstructor(constructor) &&
-      TypeGuards.isRequestHandler(handler)
+      TypeGuards.isRequestHandler(constructor, handler)
     ) {
       this._requestHandlers.remove(
         constructor,
@@ -101,7 +101,7 @@ export class Mediator {
 
     if (
       TypeGuards.isNotificationConstructor(constructor) &&
-      TypeGuards.isNotificationHandler(handler)
+      TypeGuards.isNotificationHandler(constructor, handler)
     ) {
       this._notificationHandlers.remove(
         constructor,

@@ -10,6 +10,7 @@ import {
   describe,
   it,
 } from "https://deno.land/std@0.136.0/testing/bdd.ts";
+import { Constructor } from "./types.ts";
 
 // Setup
 class TestRequest1 extends Request {
@@ -51,9 +52,8 @@ describe("RequestHandlerStore", () => {
       });
     });
 
-    it(
-      "multiple RequestHandlers for same type, throws exception",
-      () => {
+    describe("when multiple RequestHandlers for the same type", () => {
+      it("throws exception", () => {
         store.add(TestRequest1, (request) => {
           request.test1;
         });
@@ -62,8 +62,18 @@ describe("RequestHandlerStore", () => {
             request.test1;
           });
         });
-      },
-    );
+      });
+    });
+
+    describe("when not a valid Request type", () => {
+      it("throws exception", () => {
+        class NotRequest {}
+
+        assertThrows(() => {
+          store.add(NotRequest as unknown as Constructor<Request>, () => {});
+        });
+      });
+    });
   });
 
   describe("get()", () => {
@@ -94,6 +104,25 @@ describe("RequestHandlerStore", () => {
     it("when no registered handlers, it returns empty array", () => {
       assertThrows(() => {
         store.get(new TestRequest3());
+      });
+    });
+
+    describe("when not a valid Request type", () => {
+      it("throws exception", () => {
+        class NotRequest {}
+
+        assertThrows(() => {
+          store.get(new NotRequest() as Request);
+        });
+      });
+    });
+  });
+
+  describe("getMany()", () => {
+    it("throws", () => {
+      assertThrows(() => {
+        const store = new RequestHandlerStore();
+        store.getMany(new TestRequest1());
       });
     });
   });
@@ -130,5 +159,15 @@ describe("RequestHandlerStore", () => {
         assertThrows(() => store.remove(TestRequest1, handler));
       },
     );
+
+    describe("when not a valid Request type", () => {
+      it("throws exception", () => {
+        class NotRequest {}
+
+        assertThrows(() => {
+          store.remove(NotRequest as unknown as Constructor<Request>, () => {});
+        });
+      });
+    });
   });
 });

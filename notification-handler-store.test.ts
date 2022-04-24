@@ -18,10 +18,6 @@ class TestNotification1 extends Notification {
   public test1 = "test1";
 }
 
-class TestNotification2 extends Notification {
-  public test2 = "test2";
-}
-
 class TestNotification3 extends Notification {
   public test2 = "test3";
 }
@@ -94,30 +90,116 @@ describe("NotificationHandlerStore", () => {
     });
   });
 
-  describe("remove()", () => {
-    let store: NotificationHandlerStore;
-    beforeEach(() => {
-      store = new NotificationHandlerStore();
+  describe("add()", () => {
+    // Setup
+    const notificationHandlerStore = new NotificationHandlerStore();
+
+    describe("when constructor is not a notification", () => {
+      it("throws", () => {
+        class NotNotification {}
+
+        assertThrows(
+          () =>
+            notificationHandlerStore.add(
+              NotNotification,
+              () => {},
+            ),
+          Error,
+          "Not a valid notification type",
+        );
+      });
     });
 
-    it("can remove a NotificationHandler", () => {
+    describe("when adding notification handler", () => {
+      it("it is successfule", () => {
+        const notificationHandler: NotificationHandler<TestNotification3> =
+          () => {};
+
+        notificationHandlerStore.add(
+          TestNotification3,
+          notificationHandler,
+        );
+
+        const foundHandlers = notificationHandlerStore.getMany(
+          new TestNotification3(),
+        );
+
+        assertEquals(
+          [notificationHandler],
+          foundHandlers,
+        );
+      });
+    });
+  });
+});
+
+describe("get()", () => {
+  let store: NotificationHandlerStore;
+  beforeEach(() => {
+    store = new NotificationHandlerStore();
+  });
+
+  it("throws", () => {
+    assertThrows(() => {
+      store.get(new TestNotification1());
+    });
+  });
+});
+
+describe("getMany()", () => {
+  let store: NotificationHandlerStore;
+  beforeEach(() => {
+    store = new NotificationHandlerStore();
+  });
+
+  describe("when notification is not notificaton type", () => {
+    it("returns empty array", () => {
+      class NotNotification {}
+
+      assertEquals(store.getMany(new NotNotification()), []);
+    });
+  });
+});
+
+describe("remove()", () => {
+  let store: NotificationHandlerStore;
+  beforeEach(() => {
+    store = new NotificationHandlerStore();
+  });
+
+  it("can remove a NotificationHandler", () => {
+    const handler: Handler<TestNotification1> = () => {};
+    const notification = new TestNotification1();
+
+    store.add(TestNotification1, handler);
+    assertEquals(store.getMany(notification), [handler]);
+
+    store.remove(TestNotification1, handler);
+    assertEquals(store.getMany(notification), []);
+  });
+
+  it(
+    "removing a RequestHandler that is not in store, throws exception",
+    () => {
       const handler: Handler<TestNotification1> = () => {};
-      const notification = new TestNotification1();
 
-      store.add(TestNotification1, handler);
-      assertEquals(store.getMany(notification), [handler]);
+      assertThrows(() => store.remove(TestNotification1, handler));
+    },
+  );
 
-      store.remove(TestNotification1, handler);
-      assertEquals(store.getMany(notification), []);
+  describe("when constructor is not a notification", () => {
+    it("throws", () => {
+      class NotNotification {}
+
+      assertThrows(
+        () =>
+          store.remove(
+            NotNotification,
+            () => {},
+          ),
+        Error,
+        "Not a valid notification type",
+      );
     });
-
-    it(
-      "removing a RequestHandler that is not in store, throws exception",
-      () => {
-        const handler: Handler<TestNotification1> = () => {};
-
-        assertThrows(() => store.remove(TestNotification1, handler));
-      },
-    );
   });
 });
