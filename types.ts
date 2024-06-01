@@ -1,8 +1,7 @@
 import { Notification } from "./notification.ts";
 import { Request } from "./request.ts";
 
-// deno-lint-ignore no-explicit-any
-export type AnyType = any;
+export type Message = Request | Notification;
 
 export type Response<TRequest> = TRequest extends Request<infer TResponse>
   ? TResponse
@@ -13,7 +12,7 @@ export type RequestOrNotification<T> = T extends Request<infer TResponse>
   : T extends Notification ? Notification
   : never;
 
-export type RequestHandler<TRequest extends Request = Request<AnyType>> = (
+export type RequestHandler<TRequest extends Request = Request<unknown>> = (
   request: TRequest,
 ) => Response<TRequest>;
 
@@ -30,27 +29,25 @@ export type Handler<T> = T extends Request ? RequestHandler<T>
 
 export type RequestConstructor<TRequest extends Request = Request> =
   & (new (
-    ...args: AnyType
-  ) => AnyType)
+    // deno-lint-ignore no-explicit-any
+    ...args: any
+  ) => TRequest)
   & {
     prototype: TRequest;
   }
-  & {
-    requestTypeId: symbol;
-  };
+  & Pick<typeof Request, "requestTypeId">;
 
 export type NotificationConstructor<
   TNotification extends Notification = Notification,
 > =
   & (new (
-    ...args: AnyType
-  ) => AnyType)
+    // deno-lint-ignore no-explicit-any
+    ...args: any
+  ) => TNotification)
   & {
     prototype: TNotification;
   }
-  & {
-    notificationTypeId: symbol;
-  };
+  & Pick<typeof Notification, "notificationTypeId">;
 
 export type Constructor<T> = T extends Request ? RequestConstructor<T>
   : T extends Notification ? NotificationConstructor<T>

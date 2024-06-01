@@ -1,7 +1,7 @@
 export abstract class Notification {
   private static _notificationTypeId: symbol;
 
-  static get notificationTypeId() {
+  static get notificationTypeId(): symbol {
     if (
       !Object.getOwnPropertyDescriptor(this, "_notificationTypeId") ||
       this._notificationTypeId == null
