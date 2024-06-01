@@ -19,16 +19,14 @@ This is a simple library for using the mediator pattern in your typescript and d
 
 ```bash
 # npm
-npm install --save jimmy-js
-
-# yarn
-yarn add jimmy-js
+npm install --save @myty/jimmy
+npx jsr add @myty/jimmy
 ```
 
 ### Deno
 
 ```bash
-import { Mediator, Request, Notification } from "https://deno.land/x/jimmy/mod.ts";
+import { Mediator, Request, Notification } from "jsr:@myty/jimmy";
 ```
 
 ## Usage
