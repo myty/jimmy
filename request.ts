@@ -1,7 +1,7 @@
 export abstract class Request<TResponse = unknown> {
   private static _requestTypeId: symbol;
 
-  static get requestTypeId() {
+  static get requestTypeId(): symbol {
     if (
       !Object.getOwnPropertyDescriptor(this, "_requestTypeId") ||
       this._requestTypeId == null
