@@ -53,7 +53,7 @@ jobs:
       - name: publish npm package
         run: |
           cd npm
-          npm publish
+          npm publish --access=public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
