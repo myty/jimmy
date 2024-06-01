@@ -1,4 +1,4 @@
-import { assertEquals, AssertionError, assertRejects } from "jsr:@std/assert";
+import { assertEquals, AssertionError, assertRejects } from "@std/assert";
 import { describe, test } from "@std/testing/bdd";
 import { Notification } from "./notification.ts";
 import { PublishStrategy } from "./publish-strategy.ts";

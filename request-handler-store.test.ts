@@ -1,6 +1,6 @@
 import { Request } from "./request.ts";
 import { RequestHandlerStore } from "./request-handler-store.ts";
-import { assertEquals, assertExists, assertThrows } from "jsr:@std/assert";
+import { assertEquals, assertExists, assertThrows } from "@std/assert";
 import { beforeEach, describe, test } from "@std/testing/bdd";
 import { Handler } from "./types.ts";
 

@@ -1,5 +1,5 @@
 import { Notification } from "./notification.ts";
-import { assertEquals, assertThrows } from "jsr:@std/assert";
+import { assertEquals, assertThrows } from "@std/assert";
 import { beforeEach, describe, test } from "@std/testing/bdd";
 import { NotificationHandlerStore } from "./notification-handler-store.ts";
 import { Handler } from "./types.ts";

@@ -2,7 +2,7 @@ import { Mediator } from "./mediator.ts";
 import { Notification } from "./notification.ts";
 import { PublishStrategy } from "./publish-strategy.ts";
 import { Request } from "./request.ts";
-import { assertEquals, assertThrows } from "jsr:@std/assert";
+import { assertEquals, assertThrows } from "@std/assert";
 import { describe, test } from "https://deno.land/std@0.224.0/testing/bdd.ts";
 
 describe("Mediator", () => {

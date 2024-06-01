@@ -1,5 +1,5 @@
 import { Request } from "./request.ts";
-import { assertNotEquals } from "jsr:@std/assert";
+import { assertNotEquals } from "@std/assert";
 import { describe, test } from "@std/testing/bdd";
 
 describe("Request", () => {

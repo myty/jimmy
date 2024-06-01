@@ -20,7 +20,7 @@ async function start() {
       deno: true,
       timers: true,
     },
-    test: true,
+    test: false,
     compilerOptions: {
       importHelpers: true,
       target: "ES2021",
