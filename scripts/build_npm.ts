@@ -8,7 +8,7 @@
  * @module
  */
 
-import { build, emptyDir } from "https://deno.land/x/dnt@0.21.0/mod.ts";
+import { build, emptyDir } from "@deno/dnt";
 
 async function start() {
   await emptyDir("./npm");
@@ -26,14 +26,11 @@ async function start() {
       target: "ES2021",
     },
     package: {
-      name: "jimmy-js",
+      name: "@myty/jimmy",
       version: Deno.args[0].substring("refs/tags/v".length),
-      description: "An simple mediator for both Deno and Node.js",
+      description: "A simple mediator for both Deno and Node.js",
       license: "MIT",
       author: "Michael Tyson",
-      engines: {
-        node: ">=16.5.0 <18",
-      },
       repository: {
         type: "git",
         url: "git+https://github.com/myty/jimmy.git",
@@ -42,12 +39,6 @@ async function start() {
         url: "https://github.com/myty/jimmy/issues",
       },
       homepage: "https://github.com/myty/jimmy#readme",
-      dependencies: {
-        "tslib": "~2.3.1",
-      },
-      devDependencies: {
-        "@types/node": "^16",
-      },
     },
   });
 

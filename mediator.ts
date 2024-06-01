@@ -6,10 +6,13 @@ import { NotificationHandlerStore } from "./notification-handler-store.ts";
 import {
   Constructor,
   Handler,
+  NotificationConstructor,
   NotificationHandler,
+  RequestConstructor,
+  RequestHandler,
   Response,
 } from "./types.ts";
-import { IPublisher, PublisherFactory } from "./publisher-factory.ts";
+import { PublisherFactory } from "./publisher-factory.ts";
 import { TypeGuards } from "./type-guards.ts";
 
 /**
@@ -19,16 +22,52 @@ interface MediatorConfig {
   publishStratey?: PublishStrategy;
 }
 
+export interface IMediator {
+  /**
+   * Register a request or notification handler
+   */
+  handle<TRequest extends Request>(
+    constructor: RequestConstructor<TRequest>,
+    handler: RequestHandler<TRequest>,
+  ): void;
+  handle<TNotification extends Notification>(
+    constructor: NotificationConstructor<TNotification>,
+    handler: NotificationHandler<TNotification>,
+  ): void;
+
+  /**
+   * Unregister a request or notification handler
+   */
+  unhandle<TRequest extends (Request | Notification)>(
+    constructor: Constructor<TRequest>,
+    handler: Handler<TRequest>,
+  ): void;
+
+  /**
+   * Publish a notification
+   */
+  publish<TNotification extends Notification>(
+    notification: TNotification,
+    publishStrategy?: PublishStrategy,
+  ): Promise<void>;
+
+  /**
+   * Send a request
+   */
+  send<TRequest extends Request>(
+    request: TRequest,
+  ): Response<TRequest>;
+}
+
 /**
  * Main mediator class that handles requests and notifications
  */
-export class Mediator {
+export class Mediator implements IMediator {
   private _notificationHandlers: NotificationHandlerStore;
   private _requestHandlers: RequestHandlerStore;
-  private _publishStrategy: IPublisher;
-
+  private _publisher;
   constructor(config?: MediatorConfig) {
-    this._publishStrategy = PublisherFactory.create(
+    this._publisher = PublisherFactory.create(
       config?.publishStratey ??
         PublishStrategy.SyncContinueOnException,
     );
@@ -40,22 +79,25 @@ export class Mediator {
     this.send = this.send.bind(this);
   }
 
-  /**
-   * Register a request or notification handler
-   */
-  public handle<TRequest extends (Request | Notification)>(
-    constructor: Constructor<TRequest>,
-    handler: Handler<TRequest>,
+  public handle<TMessage extends Request | Notification>(
+    constructor: Constructor<TMessage>,
+    handler: Handler<TMessage>,
   ): void {
-    if (TypeGuards.isRequestConstructor(constructor)) {
+    if (
+      TypeGuards.isRequestConstructor(constructor) &&
+      TypeGuards.isRequestHandler(handler)
+    ) {
       this._requestHandlers.add(constructor, handler);
       return;
     }
 
-    if (TypeGuards.isNotificationConstructor(constructor)) {
+    if (
+      TypeGuards.isNotificationConstructor(constructor) &&
+      TypeGuards.isNotificationHandler(handler)
+    ) {
       this._notificationHandlers.add(
         constructor,
-        handler as NotificationHandler,
+        handler,
       );
       return;
     }
@@ -63,9 +105,6 @@ export class Mediator {
     throw new Error(`Invalid request or notification`);
   }
 
-  /**
-   * Unregister a request or notification handler
-   */
   public unhandle<TRequest extends (Request | Notification)>(
     constructor: Constructor<TRequest>,
     handler: Handler<TRequest>,
@@ -86,16 +125,13 @@ export class Mediator {
     throw new Error(`Invalid request or notification`);
   }
 
-  /**
-   * Publish a notification
-   */
   public async publish<TNotification extends Notification>(
     notification: TNotification,
     publishStrategy?: PublishStrategy,
   ): Promise<void> {
     const publisher = publishStrategy != null
       ? PublisherFactory.create(publishStrategy)
-      : this._publishStrategy;
+      : this._publisher;
 
     if (!TypeGuards.isNotification(notification)) {
       throw new Error(
@@ -109,9 +145,6 @@ export class Mediator {
     );
   }
 
-  /**
-   * Send a request
-   */
   public send<TRequest extends Request>(
     request: TRequest,
   ): Response<TRequest> {

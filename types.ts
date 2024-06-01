@@ -1,6 +1,8 @@
 import { Notification } from "./notification.ts";
 import { Request } from "./request.ts";
 
+export type Message = Request | Notification;
+
 export type Response<TRequest> = TRequest extends Request<infer TResponse>
   ? TResponse
   : never;
@@ -26,7 +28,8 @@ export type Handler<T> = T extends Request ? RequestHandler<T>
 
 export type RequestConstructor<TRequest extends Request = Request> =
   & (new (
-    ...args: unknown[]
+    // deno-lint-ignore no-explicit-any
+    ...args: any
   ) => TRequest)
   & {
     prototype: TRequest;
@@ -37,7 +40,8 @@ export type NotificationConstructor<
   TNotification extends Notification = Notification,
 > =
   & (new (
-    ...args: unknown[]
+    // deno-lint-ignore no-explicit-any
+    ...args: any
   ) => TNotification)
   & {
     prototype: TNotification;

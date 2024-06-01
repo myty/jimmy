@@ -1,6 +1,7 @@
 import { Request } from "./request.ts";
 import { RequestHandlerStore } from "./request-handler-store.ts";
-import { Rhum } from "https://deno.land/x/rhum@v1.1.12/mod.ts";
+import { assertEquals, assertExists, assertThrows } from "jsr:@std/assert";
+import { beforeEach, describe, test } from "@std/testing/bdd";
 import { Handler } from "./types.ts";
 
 // Setup
@@ -16,25 +17,25 @@ class TestRequest3 extends Request {
   public test2 = "test3";
 }
 
-Rhum.testPlan("RequestHandlerStore", () => {
-  Rhum.testSuite("constructor()", () => {
+describe("RequestHandlerStore", () => {
+  describe("constructor()", () => {
     const store = new RequestHandlerStore();
 
-    Rhum.testCase("initializes", () => {
-      Rhum.asserts.assertEquals(
+    test("initializes", () => {
+      assertEquals(
         store instanceof RequestHandlerStore,
         true,
       );
     });
   });
 
-  Rhum.testSuite("add()", () => {
+  describe("add()", () => {
     let store: RequestHandlerStore;
-    Rhum.beforeEach(() => {
+    beforeEach(() => {
       store = new RequestHandlerStore();
     });
 
-    Rhum.testCase("can add RequestHandlers", () => {
+    test("can add RequestHandlers", () => {
       store.add(TestRequest1, (request) => {
         request.test1;
       });
@@ -43,13 +44,13 @@ Rhum.testPlan("RequestHandlerStore", () => {
       });
     });
 
-    Rhum.testCase(
+    test(
       "multiple RequestHandlers for same type, throws exception",
       () => {
         store.add(TestRequest1, (request) => {
           request.test1;
         });
-        Rhum.asserts.assertThrows(() => {
+        assertThrows(() => {
           store.add(TestRequest1, (request) => {
             request.test1;
           });
@@ -58,7 +59,7 @@ Rhum.testPlan("RequestHandlerStore", () => {
     );
   });
 
-  Rhum.testSuite("get()", () => {
+  describe("get()", () => {
     let store: RequestHandlerStore;
 
     const requestHandler1 = (request: TestRequest1) => {
@@ -69,34 +70,34 @@ Rhum.testPlan("RequestHandlerStore", () => {
       return request.test2;
     };
 
-    Rhum.beforeEach(() => {
+    beforeEach(() => {
       store = new RequestHandlerStore();
       store.add(TestRequest1, requestHandler1);
       store.add(TestRequest2, requestHandler2);
     });
 
-    Rhum.testCase("returns correct RequestHandler", () => {
+    test("returns correct RequestHandler", () => {
       const handler = store.get(new TestRequest1());
-      Rhum.asserts.assertExists(handler);
+      assertExists(handler);
 
       const handler2 = store.get(new TestRequest2());
-      Rhum.asserts.assertExists(handler2);
+      assertExists(handler2);
     });
 
-    Rhum.testCase("when no registered handlers, it returns empty array", () => {
-      Rhum.asserts.assertThrows(() => {
+    test("when no registered handlers, it returns empty array", () => {
+      assertThrows(() => {
         store.get(new TestRequest3());
       });
     });
   });
 
-  Rhum.testSuite("remove()", () => {
+  describe("remove()", () => {
     let store: RequestHandlerStore;
-    Rhum.beforeEach(() => {
+    beforeEach(() => {
       store = new RequestHandlerStore();
     });
 
-    Rhum.testCase("can remove a RequestHandler", () => {
+    test("can remove a RequestHandler", () => {
       const handler: Handler<TestRequest1> = (request) => {
         request.test1;
       };
@@ -105,24 +106,22 @@ Rhum.testPlan("RequestHandlerStore", () => {
       store.add(TestRequest1, handler);
       const foundHandler = store.get(request);
 
-      Rhum.asserts.assertEquals(foundHandler, handler);
+      assertEquals(foundHandler, handler);
 
       store.remove(TestRequest1, handler);
 
-      Rhum.asserts.assertThrows(() => store.get(request));
+      assertThrows(() => store.get(request));
     });
 
-    Rhum.testCase(
+    test(
       "removing a RequestHandler that is not in store, throws exception",
       () => {
         const handler: Handler<TestRequest1> = (request) => {
           request.test1;
         };
 
-        Rhum.asserts.assertThrows(() => store.remove(TestRequest1, handler));
+        assertThrows(() => store.remove(TestRequest1, handler));
       },
     );
   });
 });
-
-Rhum.run();
