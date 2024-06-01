@@ -20,6 +20,7 @@ export type NotificationHandler<
   TNotification extends Notification = Notification,
 > = (
   notification: TNotification,
+  signal?: AbortSignal,
 ) => Promise<void> | void;
 
 export type Handler<T> = T extends Request ? RequestHandler<T>

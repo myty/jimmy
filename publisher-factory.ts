@@ -13,23 +13,29 @@ const buildPublisher = (publish: IPublisher["publish"]): IPublisher => ({
   publish,
 });
 
-const parallelNoWaitPublisher = buildPublisher((notification, handlers) => {
-  Promise.all(
-    handlers.map((handler) => handler(notification)?.catch(() => {})),
-  );
+const parallelNoWaitPublisher = buildPublisher(
+  (notification, handlers) => {
+    handlers.forEach((handler) => handler(notification)?.catch(() => {}));
 
-  return Promise.resolve();
-});
+    return Promise.resolve();
+  },
+);
 
 const parallelWhenAnyPublisher = buildPublisher(async (
   notification,
   handlers,
 ) => {
-  const result = await Promise.any(
+  const abortController = new AbortController();
+
+  const result = await Promise.race(
     handlers.map((handler) =>
-      handler(notification)?.catch((error): Error => error)
+      handler(notification, abortController.signal)?.catch((error): Error =>
+        error
+      )
     ),
   );
+
+  abortController.abort();
 
   if (result != null) {
     throw result;
@@ -38,14 +44,15 @@ const parallelWhenAnyPublisher = buildPublisher(async (
 
 const parallelWhenAllPublisher = buildPublisher(
   async (notification, handlers) => {
-    const results = await Promise.all(
-      handlers.map((handler) =>
-        handler(notification)?.catch((error): Error => error)
-      ),
+    const results = await Promise.allSettled(
+      handlers.map((handler) => handler(notification)),
     );
 
-    const aggregateErrors: Error[] = results
-      .filter((error): error is Error => error != null);
+    const aggregateErrors = results
+      .filter((result): result is PromiseRejectedResult =>
+        result.status === "rejected" && result.reason != null
+      )
+      .map((result) => result.reason);
 
     if (aggregateErrors.length > 0) {
       throw new AggregateError(aggregateErrors);
