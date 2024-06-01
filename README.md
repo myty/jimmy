@@ -1,10 +1,8 @@
 # Jimmy
 
-[![JSR](https://jsr.io/badges/@<scope>/<package>)](https://jsr.io/@myty/jimmy)
+[![JSR](https://jsr.io/badges/@myty/jimmy)](https://jsr.io/@myty/jimmy)
 
-This is a simple library for using the mediator pattern in your typescript and
-deno projects. While not entirely a true port, the MediatR library for .NET is a
-direct influence.
+This is a simple library for using the mediator pattern in your typescript and deno projects. While not entirely a true port, the MediatR library for .NET is a direct influence.
 
 ## Why Jimmy?
 

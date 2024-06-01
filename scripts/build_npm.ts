@@ -28,7 +28,8 @@ async function start() {
     package: {
       name: "@myty/jimmy",
       version: Deno.args[0].substring("refs/tags/v".length),
-      description: "A simple mediator for both Deno and Node.js",
+      description:
+        "This is a simple library for using the mediator pattern in your typescript and deno projects. While not entirely a true port, the MediatR library for .NET is a direct influence.",
       license: "MIT",
       author: "Michael Tyson",
       repository: {
