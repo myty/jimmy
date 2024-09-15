@@ -1,0 +1,4 @@
+{
+  "name": "@myty/jimmy-utils",
+  "exports": "./mod.ts"
+}
