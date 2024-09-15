@@ -1,24 +1,19 @@
 {
+  "editor.formatOnSave": true,
+  "editor.defaultFormatter": "denoland.vscode-deno",
   "deno.enable": true,
-  "deno.suggest.autoImports": true,
-  "deno.suggest.completeFunctionCalls": true,
+  "deno.lint": true,
+  "typescript.suggest.autoImports": true,
+  "javascript.suggest.autoImports": true,
+  "typescript.suggest.completeFunctionCalls": true,
+  "javascript.suggest.completeFunctionCalls": true,
   "deno.suggest.imports.autoDiscover": true,
-  "deno.suggest.names": true,
-  "deno.suggest.paths": true,
+  "javascript.suggest.names": true,
+  "typescript.suggest.paths": true,
+  "javascript.suggest.paths": true,
   "deno.suggest.imports.hosts": {
     "https://deno.land": true,
     "https://x.nest.land": true,
     "https://crux.land": true
-  },
-  "deno.lint": true,
-  "deno.unstable": true,
-  "prettier.enable": false,
-  "[jsonc]": {
-    "editor.formatOnSave": true,
-    "editor.defaultFormatter": "denoland.vscode-deno"
-  },
-  "[typescript]": {
-    "editor.formatOnSave": true,
-    "editor.defaultFormatter": "denoland.vscode-deno"
   }
 }

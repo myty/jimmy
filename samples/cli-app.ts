@@ -1,8 +1,6 @@
 // deno run --allow-net ./samples/cli-app.ts
 
-import { Request } from "../request.ts";
-import { Notification } from "../notification.ts";
-import { Mediator } from "../mediator.ts";
+import { Mediator, Notification, Request } from "@myty/jimmy";
 
 interface AdviceObject {
   slip: {

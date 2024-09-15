@@ -5,14 +5,6 @@
 
 This is a simple library for using the mediator pattern in your typescript and deno projects. While not entirely a true port, the MediatR library for .NET is a direct influence.
 
-## Why Jimmy?
-
-1. Former US President Jimmy Carter was known for his ability at being a great
-   mediator.
-2. The .NET Core library [MediatR](https://github.com/jbogard/MediatR) was
-   written by Jimmy Bogard.
-3. Coicdence? I think not.
-
 ## Installation
 
 ### Node.js
@@ -144,3 +136,11 @@ Depending on your use-case for publishing notifications, you might need a
 different strategy for handling the notifications. Maybe you want to publish all
 notifications in parallel, or wrap each notification handler with your own
 exception handling logic.
+
+## Why Jimmy?
+
+1. Former US President Jimmy Carter was known for his ability at being a great
+   mediator.
+2. The .NET Core library [MediatR](https://github.com/jbogard/MediatR) was
+   written by Jimmy Bogard.
+3. Coicdence? I think not.

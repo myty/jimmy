@@ -14,7 +14,7 @@ async function start() {
   await emptyDir("./npm");
 
   await build({
-    entryPoints: ["./mod.ts"],
+    entryPoints: ["./src/mod.ts"],
     outDir: "./npm",
     shims: {
       deno: true,
