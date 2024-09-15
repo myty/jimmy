@@ -40,7 +40,7 @@ jobs:
       - name: Publish package
         run: |
           deno run -A ./scripts/prep-jsr.ts ${{ github.ref }}
-          deno publish --allow-dirty
+          deno publish -c ./src/deno.json --dry-run --allow-dirty
 
       - name: build npm package
         run: deno run -A ./scripts/build_npm.ts ${{ github.ref }}
