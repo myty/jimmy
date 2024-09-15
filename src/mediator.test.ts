@@ -3,7 +3,7 @@ import { Notification } from "./notification.ts";
 import { PublishStrategy } from "./publish-strategy.ts";
 import { Request } from "./request.ts";
 import { assertEquals, assertThrows } from "@std/assert";
-import { describe, test } from "https://deno.land/std@0.224.0/testing/bdd.ts";
+import { describe, test } from "@std/testing/bdd";
 
 describe("Mediator", () => {
   // Setup
